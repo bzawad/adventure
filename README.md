@@ -51,6 +51,7 @@ adventure/
 ### Running the Application
 
 Start the development server:
+
 ```bash
 npm start
 ```
@@ -92,6 +93,7 @@ The `generateDungeon.js` utility creates dungeons by:
 ### Changing Dungeon Size
 
 Modify the `DungeonMap` component props:
+
 ```jsx
 <DungeonMap width={30} height={30} minFloorTiles={200} />
 ```
@@ -105,6 +107,7 @@ Modify the `DungeonMap` component props:
 ### Evolution Paths
 
 The modular design allows for easy evolution to:
+
 - **Cavern Generation**: Add cave-specific generation algorithms
 - **Outdoor Maps**: Implement outdoor terrain generation
 - **City Maps**: Add building and street generation
@@ -125,4 +128,4 @@ The modular design allows for easy evolution to:
 
 ## License
 
-ISC License 
+ISC License
