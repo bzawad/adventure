@@ -4,19 +4,28 @@ import {
   generateDungeon,
   getTileBackgroundPosition,
 } from "../utils/generateDungeon";
+import { generateCavern } from "../utils/generateCavern";
 import "./DungeonMap.css";
 
-const DungeonMap = ({ width = 60, height = 60, minFloorTiles = 100 }) => {
+const DungeonMap = ({
+  width = 60,
+  height = 60,
+  minFloorTiles = 100,
+  mapType = "dungeon",
+}) => {
   const [dungeon, setDungeon] = useState([]);
 
-  const generateNewDungeon = () => {
-    const newDungeon = generateDungeon(width, height, minFloorTiles);
-    setDungeon(newDungeon);
+  const generateNewMap = () => {
+    const newMap =
+      mapType === "cavern"
+        ? generateCavern(width, height, minFloorTiles)
+        : generateDungeon(width, height, minFloorTiles);
+    setDungeon(newMap);
   };
 
   useEffect(() => {
-    generateNewDungeon();
-  }, [width, height, minFloorTiles]);
+    generateNewMap();
+  }, [width, height, minFloorTiles, mapType]);
 
   const getTileStyle = (tile) => {
     const backgroundImage =
@@ -47,16 +56,33 @@ const DungeonMap = ({ width = 60, height = 60, minFloorTiles = 100 }) => {
     return dungeon.flat().filter((tile) => tile.type === "wall").length;
   };
 
+  const countCorridorTiles = () => {
+    return dungeon.flat().filter((tile) => tile.type === "corridor").length;
+  };
+
+  const getMapTitle = () => {
+    return mapType === "cavern"
+      ? "Cavern Map Generator"
+      : "Dungeon Map Generator";
+  };
+
+  const getGenerateButtonText = () => {
+    return mapType === "cavern"
+      ? "Generate New Cavern"
+      : "Generate New Dungeon";
+  };
+
   return (
     <div className="dungeon-container">
       <div className="dungeon-header">
-        <h2>Dungeon Map Generator</h2>
+        <h2>{getMapTitle()}</h2>
         <div className="dungeon-stats">
           <span>Floor tiles: {countFloorTiles()}</span>
           <span>Wall tiles: {countWallTiles()}</span>
+          <span>Corridor tiles: {countCorridorTiles()}</span>
         </div>
-        <button onClick={generateNewDungeon} className="generate-button">
-          Generate New Dungeon
+        <button onClick={generateNewMap} className="generate-button">
+          {getGenerateButtonText()}
         </button>
       </div>
 
@@ -82,6 +108,7 @@ DungeonMap.propTypes = {
   width: PropTypes.number,
   height: PropTypes.number,
   minFloorTiles: PropTypes.number,
+  mapType: PropTypes.oneOf(["dungeon", "cavern"]),
 };
 
 export default DungeonMap;

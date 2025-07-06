@@ -3,9 +3,9 @@ import { render, screen } from "@testing-library/react";
 import React from "react";
 import App from "./App.jsx";
 
-test("renders hello message", () => {
+test("renders dungeon generator by default", () => {
   render(<App />);
-  expect(
-    screen.getByText(/Hello, Vite \+ React is working!/i),
-  ).toBeInTheDocument();
+  expect(screen.getByText(/Dungeon Generator/i)).toBeInTheDocument();
+  expect(screen.getByText(/Cavern Generator/i)).toBeInTheDocument();
+  expect(screen.getByText(/Dungeon Map Generator/i)).toBeInTheDocument();
 });
