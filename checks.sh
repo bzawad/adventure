@@ -6,12 +6,13 @@
 #   1. Prettier (formatting, --check mode)
 #   2. ESLint (linting for JS/JSX/TS/TSX)
 #   3. TypeScript (type checking, if present)
-#   4. npm audit (security vulnerabilities)
+#   4. Vite build (dry run)
+#   5. npm audit (security vulnerabilities)
 #
 # The script fails on the first error (set -e).
 #
 # If you are missing any tools, install them with:
-#   npm install --save-dev prettier eslint typescript
+#   npm install --save-dev prettier eslint typescript vite @vitejs/plugin-react
 #
 # Usage: bash checks.sh
 
@@ -48,7 +49,16 @@ else
   echo "No tsconfig.json found, skipping TypeScript check."
 fi
 
-# 4. npm audit for security vulnerabilities
+# 4. Vite build check
+if npx vite --version >/dev/null 2>&1; then
+  echo "Running Vite build (dry run)..."
+  npx vite build --ssrManifest --outDir /tmp/vite-check >/dev/null 2>&1 || { echo "Vite build failed!"; exit 1; }
+else
+  echo "Vite not found. Install with: npm install --save-dev vite @vitejs/plugin-react"
+  exit 1
+fi
+
+# 5. npm audit for security vulnerabilities
 if npm --version >/dev/null 2>&1; then
   echo "Running npm audit..."
   npm audit --audit-level=moderate
