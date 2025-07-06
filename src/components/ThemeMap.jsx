@@ -9,6 +9,9 @@ import { generateOutdoor } from "../utils/generateOutdoor";
 import { generateCity } from "../utils/generateCity";
 import { TILE_CONFIG } from "../config/tileConfig";
 import "./ThemeMap.css";
+import doorImg from "/images/wooden_door.png";
+import lockImg from "/images/lock.png";
+import trapImg from "/images/trap.png";
 
 const ThemeMap = ({
   width = 60,
@@ -185,6 +188,72 @@ const ThemeMap = ({
     return "Generate New Dungeon";
   };
 
+  function getDoorRotation(orientation) {
+    switch (orientation) {
+      case "north":
+        return "rotate(180deg)";
+      case "south":
+        return "rotate(0deg)";
+      case "east":
+        return "rotate(270deg)";
+      case "west":
+        return "rotate(90deg)";
+      default:
+        return "rotate(0deg)";
+    }
+  }
+
+  function rotatePoint(x, y, angleDeg, cx = 16, cy = 16) {
+    // Rotates (x, y) around (cx, cy) by angleDeg
+    const angle = (angleDeg * Math.PI) / 180;
+    const dx = x - cx;
+    const dy = y - cy;
+    const rx = dx * Math.cos(angle) - dy * Math.sin(angle);
+    const ry = dx * Math.sin(angle) + dy * Math.cos(angle);
+    return { left: Math.round(cx + rx), top: Math.round(cy + ry) };
+  }
+
+  function getDoorIconPosition(orientation, which, both) {
+    // which: 'lock' or 'trap'; both: true if both icons are present
+    // Returns {left, top, width, height} in px for 32x32 tile
+    const iconSize = 16; // always full size
+    if (!both) {
+      // Single icon: always center in the door area
+      if (orientation === "south") {
+        return { left: 8, top: 16, width: iconSize, height: iconSize };
+      } else if (orientation === "north") {
+        return { left: 8, top: 0, width: iconSize, height: iconSize };
+      } else if (orientation === "east") {
+        return { left: 16, top: 8, width: iconSize, height: iconSize };
+      } else if (orientation === "west") {
+        return { left: 0, top: 8, width: iconSize, height: iconSize };
+      }
+    } else {
+      // Dual icons: base positions for south (unrotated), match single icon's vertical alignment
+      let base = { left: 0, top: 16 };
+      if (which === "lock") base.left = 0;
+      if (which === "trap") base.left = 16;
+      // Now rotate base position for orientation
+      let rotated;
+      if (orientation === "south") {
+        rotated = { left: base.left, top: base.top };
+      } else if (orientation === "east") {
+        rotated = rotatePoint(base.left + 8, base.top + 8, 90, 16, 16); // +8 to center icon
+        rotated.left -= 8;
+        rotated.top -= 8;
+      } else if (orientation === "north") {
+        rotated = rotatePoint(base.left + 8, base.top + 8, 180, 16, 16);
+        rotated.left -= 8;
+        rotated.top -= 8;
+      } else if (orientation === "west") {
+        rotated = rotatePoint(base.left + 8, base.top + 8, 270, 16, 16);
+        rotated.left -= 8;
+        rotated.top -= 8;
+      }
+      return { ...rotated, width: iconSize, height: iconSize };
+    }
+  }
+
   return (
     <div className="dungeon-container">
       <div className="dungeon-header">
@@ -264,6 +333,97 @@ const ThemeMap = ({
                   }
                 >
                   {tile.label}
+                  {tile.door && (
+                    <>
+                      <img
+                        src={doorImg}
+                        alt="door"
+                        className="door-overlay-img"
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          width: 32,
+                          height: 32,
+                          pointerEvents: "none",
+                          transform: getDoorRotation(tile.door.orientation),
+                          zIndex: 2,
+                        }}
+                      />
+                      {tile.door.locked && !tile.door.trapped && (
+                        <img
+                          src={lockImg}
+                          alt="lock"
+                          className="door-symbol-overlay"
+                          style={{
+                            position: "absolute",
+                            ...getDoorIconPosition(
+                              tile.door.orientation,
+                              "lock",
+                              false,
+                            ),
+                            pointerEvents: "none",
+                            zIndex: 3,
+                            transform: getDoorRotation(tile.door.orientation),
+                          }}
+                        />
+                      )}
+                      {tile.door.trapped && !tile.door.locked && (
+                        <img
+                          src={trapImg}
+                          alt="trap"
+                          className="door-symbol-overlay"
+                          style={{
+                            position: "absolute",
+                            ...getDoorIconPosition(
+                              tile.door.orientation,
+                              "trap",
+                              false,
+                            ),
+                            pointerEvents: "none",
+                            zIndex: 3,
+                            transform: getDoorRotation(tile.door.orientation),
+                          }}
+                        />
+                      )}
+                      {tile.door.locked && tile.door.trapped && (
+                        <>
+                          <img
+                            src={lockImg}
+                            alt="lock"
+                            className="door-symbol-overlay"
+                            style={{
+                              position: "absolute",
+                              ...getDoorIconPosition(
+                                tile.door.orientation,
+                                "lock",
+                                true,
+                              ),
+                              pointerEvents: "none",
+                              zIndex: 3,
+                              transform: getDoorRotation(tile.door.orientation),
+                            }}
+                          />
+                          <img
+                            src={trapImg}
+                            alt="trap"
+                            className="door-symbol-overlay"
+                            style={{
+                              position: "absolute",
+                              ...getDoorIconPosition(
+                                tile.door.orientation,
+                                "trap",
+                                true,
+                              ),
+                              pointerEvents: "none",
+                              zIndex: 3,
+                              transform: getDoorRotation(tile.door.orientation),
+                            }}
+                          />
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               );
             })}

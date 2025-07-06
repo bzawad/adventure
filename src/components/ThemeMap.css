@@ -76,6 +76,7 @@
   background-size: 128px 128px;
   transition: all 0.2s ease;
   cursor: pointer;
+  position: relative;
 }
 
 .dungeon-tile:hover {
@@ -151,6 +152,24 @@
 .tile-highlighted {
   filter: brightness(1.7);
   z-index: 2;
+}
+
+.door-overlay-img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.door-symbol-overlay {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  z-index: 3;
 }
 
 /* Responsive design */

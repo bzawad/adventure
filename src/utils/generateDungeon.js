@@ -128,6 +128,71 @@ function connectRooms(grid, rooms) {
   return corridors;
 }
 
+function findCorridorRoomIntersections(grid, corridors) {
+  // Returns [{x, y, orientation}] for valid door positions
+  const intersections = [];
+  for (const corridor of corridors) {
+    for (const { x, y } of corridor.path) {
+      if (grid[y][x].type !== "dungeon_corridor") continue;
+      // Check each direction for adjacent room
+      const directions = [
+        { dx: 0, dy: -1, orientation: "north" },
+        { dx: 0, dy: 1, orientation: "south" },
+        { dx: -1, dy: 0, orientation: "west" },
+        { dx: 1, dy: 0, orientation: "east" },
+      ];
+      for (const { dx, dy, orientation } of directions) {
+        const nx = x + dx,
+          ny = y + dy;
+        if (
+          ny >= 0 &&
+          ny < grid.length &&
+          nx >= 0 &&
+          nx < grid[0].length &&
+          grid[ny][nx].type === "dungeon_floor"
+        ) {
+          // Check for barriers on the sides (per orientation)
+          let side1, side2;
+          if (orientation === "north" || orientation === "south") {
+            side1 = grid[y][x - 1];
+            side2 = grid[y][x + 1];
+          } else {
+            side1 = grid[y - 1]?.[x];
+            side2 = grid[y + 1]?.[x];
+          }
+          const isBlocked = (tile) =>
+            tile && ["dungeon_wall", "dungeon_door"].includes(tile.type);
+          if (isBlocked(side1) && isBlocked(side2)) {
+            intersections.push({ x, y, orientation });
+          }
+        }
+      }
+    }
+  }
+  return intersections;
+}
+
+function randomDoorStatus() {
+  // 1 in 3 locked, 1 in 8 trapped
+  const locked = Math.random() < 1 / 3;
+  const trapped = Math.random() < 1 / 8;
+  return { locked, trapped };
+}
+
+function placeDoors(grid, corridors) {
+  const intersections = findCorridorRoomIntersections(grid, corridors);
+  // Place a door at each intersection (could randomize subset if desired)
+  for (const { x, y, orientation } of intersections) {
+    // Only place if not already a door
+    if (!grid[y][x].door) {
+      const { locked, trapped } = randomDoorStatus();
+      grid[y][x].door = { orientation, locked, trapped };
+      // Optionally, mark as a special type for clarity
+      // grid[y][x].type = "dungeon_corridor"; // keep as corridor for rendering
+    }
+  }
+}
+
 export function generateDungeon(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // 1. Create empty grid
   const grid = createEmptyGrid(width, height);
@@ -137,6 +202,8 @@ export function generateDungeon(width = GRID_WIDTH, height = GRID_HEIGHT) {
   rooms.forEach((room) => carveRoom(grid, room));
   // 4. Connect rooms with corridors
   const corridors = connectRooms(grid, rooms);
+  // 4.5 Place doors at corridor-room intersections
+  placeDoors(grid, corridors);
   // 5. Fill in random tileX/tileY for remaining walls
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
