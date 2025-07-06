@@ -17,7 +17,7 @@ function randomInt(min, max) {
 
 function createEmptyGrid(width, height) {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type: "wall", tileX: 0, tileY: 0 })),
+    Array.from({ length: width }, () => ({ type: "outdoor_shrub", tileX: 0, tileY: 0 })),
   );
 }
 
@@ -60,8 +60,8 @@ function roomCenter(room) {
 function carveHorizontalCorridor(grid, x1, x2, y) {
   const path = [];
   for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
-    if (grid[y][x].type === "wall") {
-      grid[y][x].type = "corridor";
+    if (grid[y][x].type === "outdoor_shrub") {
+      grid[y][x].type = "outdoor_road";
       grid[y][x].tileX = randomInt(0, 3);
       grid[y][x].tileY = randomInt(0, 3);
     }
@@ -73,8 +73,8 @@ function carveHorizontalCorridor(grid, x1, x2, y) {
 function carveVerticalCorridor(grid, y1, y2, x) {
   const path = [];
   for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-    if (grid[y][x].type === "wall") {
-      grid[y][x].type = "corridor";
+    if (grid[y][x].type === "outdoor_shrub") {
+      grid[y][x].type = "outdoor_road";
       grid[y][x].tileX = randomInt(0, 3);
       grid[y][x].tileY = randomInt(0, 3);
     }
@@ -172,11 +172,11 @@ function transformRoomsToOutdoorAreas(grid, rooms) {
     area.cells.forEach(({ x, y }) => {
       if (grid[y] && grid[y][x]) {
         if (area.isMountain) {
-          grid[y][x].type = "mountain";
+          grid[y][x].type = "outdoor_mountain";
         } else if (area.isWater) {
-          grid[y][x].type = "water";
+          grid[y][x].type = "outdoor_lake";
         } else {
-          grid[y][x].type = "floor";
+          grid[y][x].type = "outdoor_area";
         }
         grid[y][x].tileX = randomInt(0, 3);
         grid[y][x].tileY = randomInt(0, 3);
@@ -209,9 +209,9 @@ function transformCorridorsToPaths(grid, corridors) {
             if (
               grid[pos.y] &&
               grid[pos.y][pos.x] &&
-              grid[pos.y][pos.x].type === "wall"
+              grid[pos.y][pos.x].type === "outdoor_shrub"
             ) {
-              grid[pos.y][pos.x].type = "corridor";
+              grid[pos.y][pos.x].type = "outdoor_road";
               grid[pos.y][pos.x].tileX = randomInt(0, 3);
               grid[pos.y][pos.x].tileY = randomInt(0, 3);
             }
@@ -260,9 +260,9 @@ function applyOrganicGrowth(grid, areas) {
             if (
               grid[newY] &&
               grid[newY][newX] &&
-              grid[newY][newX].type === "wall"
+              grid[newY][newX].type === "outdoor_shrub"
             ) {
-              grid[newY][newX].type = "floor";
+              grid[newY][newX].type = "outdoor_area";
               grid[newY][newX].tileX = randomInt(0, 3);
               grid[newY][newX].tileY = randomInt(0, 3);
             }
@@ -302,8 +302,8 @@ function carveRiver(grid, from, to) {
       const width = Math.random() < 0.5 ? 1 : 2;
       for (let dy = 0; dy < width; dy++) {
         const yy = y1 + dy;
-        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "water") {
-          grid[yy][x].type = "river";
+        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "outdoor_lake") {
+          grid[yy][x].type = "outdoor_river";
           grid[yy][x].tileX = randomInt(0, 3);
           grid[yy][x].tileY = randomInt(0, 3);
         }
@@ -313,8 +313,8 @@ function carveRiver(grid, from, to) {
       const width = Math.random() < 0.5 ? 1 : 2;
       for (let dx = 0; dx < width; dx++) {
         const xx = x2 + dx;
-        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "water") {
-          grid[y][xx].type = "river";
+        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "outdoor_lake") {
+          grid[y][xx].type = "outdoor_river";
           grid[y][xx].tileX = randomInt(0, 3);
           grid[y][xx].tileY = randomInt(0, 3);
         }
@@ -326,8 +326,8 @@ function carveRiver(grid, from, to) {
       const width = Math.random() < 0.5 ? 1 : 2;
       for (let dx = 0; dx < width; dx++) {
         const xx = x1 + dx;
-        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "water") {
-          grid[y][xx].type = "river";
+        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "outdoor_lake") {
+          grid[y][xx].type = "outdoor_river";
           grid[y][xx].tileX = randomInt(0, 3);
           grid[y][xx].tileY = randomInt(0, 3);
         }
@@ -337,8 +337,8 @@ function carveRiver(grid, from, to) {
       const width = Math.random() < 0.5 ? 1 : 2;
       for (let dy = 0; dy < width; dy++) {
         const yy = y2 + dy;
-        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "water") {
-          grid[yy][x].type = "river";
+        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "outdoor_lake") {
+          grid[yy][x].type = "outdoor_river";
           grid[yy][x].tileX = randomInt(0, 3);
           grid[yy][x].tileY = randomInt(0, 3);
         }
@@ -357,7 +357,7 @@ export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // Fill in random tileX/tileY for remaining walls
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (foundation.grid[y][x].type === "wall") {
+      if (foundation.grid[y][x].type === "outdoor_shrub") {
         foundation.grid[y][x].tileX = randomInt(0, 3);
         foundation.grid[y][x].tileY = randomInt(0, 3);
       }

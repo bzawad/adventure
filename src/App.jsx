@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import DungeonMap from "./components/DungeonMap.jsx";
+import ThemeMap from "./components/ThemeMap.jsx";
 import "./App.css";
 
 export default function App() {
@@ -33,7 +33,7 @@ export default function App() {
           City Generator
         </button>
       </div>
-      <DungeonMap mapType={mapType} />
+      <ThemeMap mapType={mapType} />
     </div>
   );
 }

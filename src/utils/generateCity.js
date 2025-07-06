@@ -14,7 +14,7 @@ function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function createEmptyGrid(width, height, fillType = "shrub") {
+function createEmptyGrid(width, height, fillType = "city_shrub") {
   return Array.from({ length: height }, () =>
     Array.from({ length: width }, () => ({
       type: fillType,
@@ -60,7 +60,7 @@ function carveRoads(grid, blocks, width, height) {
     for (let roadY = y; roadY < y + ROAD_WIDTH; roadY++) {
       if (roadY >= 0 && roadY < height) {
         for (let x = 0; x < width; x++) {
-          grid[roadY][x].type = "road";
+          grid[roadY][x].type = "city_road";
         }
       }
     }
@@ -77,7 +77,7 @@ function carveRoads(grid, blocks, width, height) {
     for (let roadX = x; roadX < x + ROAD_WIDTH; roadX++) {
       if (roadX >= 0 && roadX < width) {
         for (let y = 0; y < height; y++) {
-          grid[y][roadX].type = "road";
+          grid[y][roadX].type = "city_road";
         }
       }
     }
@@ -102,7 +102,7 @@ function placeBuildings(grid, blocks) {
       const floorCells = [];
       for (let x = buildingX + 1; x < buildingX + buildingWidth - 1; x++) {
         for (let y = buildingY + 1; y < buildingY + buildingHeight - 1; y++) {
-          grid[y][x].type = "floor";
+          grid[y][x].type = "city_floor";
           grid[y][x].tileX = randomInt(0, 3);
           grid[y][x].tileY = randomInt(0, 3);
           floorCells.push({ x, y });
@@ -145,15 +145,15 @@ function placeBuildings(grid, blocks) {
       else if (door.x === buildingX + buildingWidth - 1) doorSide = "right";
       // Place the door (as road)
       if (door) {
-        grid[door.y][door.x].type = "road";
+        grid[door.y][door.x].type = "city_road";
         // Carve a path from the door to the nearest road
         carvePathToRoad(grid, door, doorSide, grid[0].length, grid.length);
       }
       // Place wall tiles (skip door)
       wallCells.forEach(({ x, y }) => {
         if (!door || x !== door.x || y !== door.y) {
-          if (grid[y][x].type !== "floor") {
-            grid[y][x].type = "wall";
+          if (grid[y][x].type !== "city_floor") {
+            grid[y][x].type = "city_wall";
             grid[y][x].tileX = randomInt(0, 3);
             grid[y][x].tileY = randomInt(0, 3);
           }
@@ -179,23 +179,23 @@ function carvePathToRoad(grid, door, side, width, height) {
   let { x, y } = door;
   if (side === "top") {
     for (let yy = y - 1; yy >= 0; yy--) {
-      if (grid[yy][x].type === "road") break;
-      grid[yy][x].type = "road";
+      if (grid[yy][x].type === "city_road") break;
+      grid[yy][x].type = "city_road";
     }
   } else if (side === "bottom") {
     for (let yy = y + 1; yy < height; yy++) {
-      if (grid[yy][x].type === "road") break;
-      grid[yy][x].type = "road";
+      if (grid[yy][x].type === "city_road") break;
+      grid[yy][x].type = "city_road";
     }
   } else if (side === "left") {
     for (let xx = x - 1; xx >= 0; xx--) {
-      if (grid[y][xx].type === "road") break;
-      grid[y][xx].type = "road";
+      if (grid[y][xx].type === "city_road") break;
+      grid[y][xx].type = "city_road";
     }
   } else if (side === "right") {
     for (let xx = x + 1; xx < width; xx++) {
-      if (grid[y][xx].type === "road") break;
-      grid[y][xx].type = "road";
+      if (grid[y][xx].type === "city_road") break;
+      grid[y][xx].type = "city_road";
     }
   }
 }
@@ -208,7 +208,7 @@ function addShrubRoadVariation(grid) {
   const shrubPositions = [];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (grid[y][x].type === "shrub") {
+      if (grid[y][x].type === "city_shrub") {
         shrubPositions.push({ x, y });
       }
     }
@@ -227,17 +227,17 @@ function addShrubRoadVariation(grid) {
         nx < width &&
         ny >= 0 &&
         ny < height &&
-        grid[ny][nx].type === "road",
+        grid[ny][nx].type === "city_road",
     );
     if (isAdjacentToRoad && Math.random() < 0.2) {
-      grid[y][x].type = "road";
+      grid[y][x].type = "city_road";
     }
   });
 }
 
 export function generateCity(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // 1. Fill entire map with shrubs
-  const grid = createEmptyGrid(width, height, "shrub");
+  const grid = createEmptyGrid(width, height, "city_shrub");
   // 2. Divide map into uniform grid of rectangular building blocks
   const blocks = calculateBuildingBlocks(width, height);
   // 3. Carve 2-tile wide roads between blocks

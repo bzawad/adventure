@@ -17,7 +17,7 @@ function randomInt(min, max) {
 
 function createEmptyGrid(width, height) {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type: "wall", tileX: 0, tileY: 0 })),
+    Array.from({ length: width }, () => ({ type: "cavern_wall", tileX: 0, tileY: 0 })),
   );
 }
 
@@ -60,8 +60,8 @@ function roomCenter(room) {
 function carveHorizontalCorridor(grid, x1, x2, y) {
   const path = [];
   for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
-    if (grid[y][x].type === "wall") {
-      grid[y][x].type = "corridor";
+    if (grid[y][x].type === "cavern_wall") {
+      grid[y][x].type = "cavern_corridor";
       grid[y][x].tileX = randomInt(0, 3);
       grid[y][x].tileY = randomInt(0, 3);
     }
@@ -73,8 +73,8 @@ function carveHorizontalCorridor(grid, x1, x2, y) {
 function carveVerticalCorridor(grid, y1, y2, x) {
   const path = [];
   for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-    if (grid[y][x].type === "wall") {
-      grid[y][x].type = "corridor";
+    if (grid[y][x].type === "cavern_wall") {
+      grid[y][x].type = "cavern_corridor";
       grid[y][x].tileX = randomInt(0, 3);
       grid[y][x].tileY = randomInt(0, 3);
     }
@@ -161,7 +161,7 @@ function transformRoomsToCaverns(grid, rooms) {
   caverns.forEach((cavern) => {
     cavern.cells.forEach(({ x, y }) => {
       if (grid[y] && grid[y][x]) {
-        grid[y][x].type = "floor";
+        grid[y][x].type = "cavern_floor";
         grid[y][x].tileX = randomInt(0, 3);
         grid[y][x].tileY = randomInt(0, 3);
       }
@@ -195,9 +195,9 @@ function transformCorridorsToPassages(grid, corridors) {
             if (
               grid[pos.y] &&
               grid[pos.y][pos.x] &&
-              grid[pos.y][pos.x].type === "wall"
+              grid[pos.y][pos.x].type === "cavern_wall"
             ) {
-              grid[pos.y][pos.x].type = "corridor";
+              grid[pos.y][pos.x].type = "cavern_corridor";
               grid[pos.y][pos.x].tileX = randomInt(0, 3);
               grid[pos.y][pos.x].tileY = randomInt(0, 3);
             }
@@ -250,9 +250,9 @@ function applyOrganicGrowth(grid, caverns) {
             if (
               grid[newY] &&
               grid[newY][newX] &&
-              grid[newY][newX].type === "wall"
+              grid[newY][newX].type === "cavern_wall"
             ) {
-              grid[newY][newX].type = "floor";
+              grid[newY][newX].type = "cavern_floor";
               grid[newY][newX].tileX = randomInt(0, 3);
               grid[newY][newX].tileY = randomInt(0, 3);
             }
@@ -283,7 +283,7 @@ export function generateCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // Fill in random tileX/tileY for remaining walls
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (foundation.grid[y][x].type === "wall") {
+      if (foundation.grid[y][x].type === "cavern_wall") {
         foundation.grid[y][x].tileX = randomInt(0, 3);
         foundation.grid[y][x].tileY = randomInt(0, 3);
       }
