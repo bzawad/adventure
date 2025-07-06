@@ -104,6 +104,50 @@
   background-color: #2a2a2a;
 }
 
+/* Label styling */
+.dungeon-tile[data-label] {
+  font-weight: bold;
+  font-size: 12px;
+  color: black;
+}
+
+/* Different label colors for different types */
+.dungeon-tile[data-label-type="room"] {
+  /* background-color: rgba(255, 0, 0, 0.6); */
+}
+
+.dungeon-tile[data-label-type="corridor"] {
+  /* background-color: rgba(0, 255, 0, 0.6); */
+}
+
+.dungeon-tile[data-label-type="chamber"] {
+  /* background-color: rgba(255, 165, 0, 0.6); */
+}
+
+.dungeon-tile[data-label-type="tunnel"] {
+  /* background-color: rgba(0, 255, 255, 0.6); */
+}
+
+.dungeon-tile[data-label-type="lake"] {
+  /* background-color: rgba(0, 0, 255, 0.6); */
+}
+
+.dungeon-tile[data-label-type="river"] {
+  /* background-color: rgba(0, 255, 255, 0.6); */
+}
+
+.dungeon-tile[data-label-type="area"] {
+  /* background-color: rgba(128, 0, 128, 0.6); */
+}
+
+.dungeon-tile[data-label-type="road"] {
+  /* background-color: rgba(139, 69, 19, 0.6); */
+}
+
+.dungeon-tile[data-label-type="building"] {
+  /* background-color: rgba(255, 215, 0, 0.6); */
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .dungeon-container {

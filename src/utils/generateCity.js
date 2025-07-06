@@ -3,6 +3,7 @@
 // 2. Divide map into uniform grid of rectangular building blocks
 // 3. Carve 2-tile wide roads between blocks
 // 4. Place buildings in 70% of blocks with doors connecting to roads
+import { addCityLabels } from "./labelUtils";
 
 const GRID_WIDTH = 60;
 const GRID_HEIGHT = 60;
@@ -243,7 +244,7 @@ export function generateCity(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // 3. Carve 2-tile wide roads between blocks
   carveRoads(grid, blocks, width, height);
   // 4. Place buildings in 70% of blocks
-  placeBuildings(grid, blocks);
+  const placedBuildings = placeBuildings(grid, blocks);
   // Fill in random tileX/tileY for all tiles
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -255,7 +256,8 @@ export function generateCity(width = GRID_WIDTH, height = GRID_HEIGHT) {
   }
   // Add organic shrub/road boundary variation
   addShrubRoadVariation(grid);
-  return grid;
+  // Add labels
+  return addCityLabels(grid, placedBuildings);
 }
 
 // Returns CSS background-position for a 4x4 tileset (32px tiles)

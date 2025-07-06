@@ -17,23 +17,50 @@ const ThemeMap = ({
   mapType = "dungeon",
 }) => {
   const [dungeon, setDungeon] = useState([]);
+  const [error, setError] = useState(null);
 
   const generateNewMap = () => {
-    let newMap;
-    if (mapType === "cavern") {
-      newMap = generateCavern(width, height, minFloorTiles);
-    } else if (mapType === "outdoor") {
-      newMap = generateOutdoor(width, height);
-    } else if (mapType === "city") {
-      newMap = generateCity(width, height);
-    } else {
-      newMap = generateDungeon(width, height, minFloorTiles);
+    try {
+      let newMap;
+      if (mapType === "cavern") {
+        newMap = generateCavern(width, height, minFloorTiles);
+      } else if (mapType === "outdoor") {
+        newMap = generateOutdoor(width, height);
+      } else if (mapType === "city") {
+        newMap = generateCity(width, height);
+      } else {
+        newMap = generateDungeon(width, height, minFloorTiles);
+      }
+      setDungeon(newMap);
+      setError(null);
+    } catch (error) {
+      console.error("Error generating map:", error);
+      setError(error.message || "Unknown error during map generation.");
+      // Fallback to a simple empty grid if generation fails
+      const fallbackGrid = Array.from({ length: height }, () =>
+        Array.from({ length: width }, () => ({
+          type: "dungeon_wall",
+          tileX: 0,
+          tileY: 0,
+        })),
+      );
+      setDungeon(fallbackGrid);
     }
-    setDungeon(newMap);
   };
 
   useEffect(() => {
     generateNewMap();
+    // Debug: log if any label tiles exist
+    setTimeout(() => {
+      if (dungeon.flat().some((tile) => tile.label)) {
+        console.log(
+          "Label tiles found:",
+          dungeon.flat().filter((tile) => tile.label),
+        );
+      } else {
+        console.log("No label tiles found in the map.");
+      }
+    }, 100);
   }, [width, height, minFloorTiles, mapType]);
 
   const getTileStyle = (tile) => {
@@ -59,6 +86,19 @@ const ThemeMap = ({
       width: "32px",
       height: "32px",
     };
+  };
+
+  const getLabelType = (tileType) => {
+    if (tileType.includes("room_label")) return "room";
+    if (tileType.includes("corridor_label")) return "corridor";
+    if (tileType.includes("chamber_label")) return "chamber";
+    if (tileType.includes("tunnel_label")) return "tunnel";
+    if (tileType.includes("lake_label")) return "lake";
+    if (tileType.includes("river_label")) return "river";
+    if (tileType.includes("area_label")) return "area";
+    if (tileType.includes("road_label")) return "road";
+    if (tileType.includes("building_label")) return "building";
+    return null;
   };
 
   const countFloorTiles = () => {
@@ -148,6 +188,11 @@ const ThemeMap = ({
     <div className="dungeon-container">
       <div className="dungeon-header">
         <h2>{getMapTitle()}</h2>
+        {error && (
+          <div style={{ color: "red", marginBottom: 10, fontWeight: "bold" }}>
+            Map generation error: {error}
+          </div>
+        )}
         <div className="dungeon-stats">
           {mapType === "city" ? (
             <>
@@ -194,7 +239,11 @@ const ThemeMap = ({
                 className={`dungeon-tile ${tile.type}`}
                 style={getTileStyle(tile)}
                 title={`${tile.type} at (${colIndex}, ${rowIndex})`}
-              />
+                data-label={tile.label || undefined}
+                data-label-type={getLabelType(tile.type) || undefined}
+              >
+                {tile.label}
+              </div>
             ))}
           </div>
         ))}

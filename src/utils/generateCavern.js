@@ -3,6 +3,7 @@
 // 2. Transform rooms to organic cavern chambers
 // 3. Widen corridors to natural passages
 // 4. Apply organic growth for natural appearance
+import { addCavernLabels } from "./labelUtils";
 
 const MIN_ROOM_SIZE = 4;
 const MAX_ROOM_SIZE = 8;
@@ -389,7 +390,8 @@ export function generateCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
     }
   }
 
-  return foundation.grid;
+  // Add labels
+  return addCavernLabels(foundation.grid, caverns, lakeCaverns);
 }
 
 // Returns CSS background-position for a 4x4 tileset (32px tiles)

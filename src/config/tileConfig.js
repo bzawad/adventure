@@ -117,6 +117,99 @@ export const TILE_CONFIG = {
     size: 32,
     tiles: 4,
   },
+
+  // Label Tiles (overlay on existing tiles)
+  dungeon_room_label: {
+    walkable: true, // inherits from underlying tile
+    image: "/images/tilesets/light_cracked_stone.png", // match dungeon_floor
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  dungeon_corridor_label: {
+    walkable: true,
+    image: "/images/tilesets/light_cracked_stone.png", // match dungeon_floor
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  cavern_chamber_label: {
+    walkable: true,
+    image: "/images/tilesets/light_brown_cavern.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  cavern_tunnel_label: {
+    walkable: true,
+    image: "/images/tilesets/light_brown_cavern.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  cavern_lake_label: {
+    walkable: true,
+    image: "/images/tilesets/calm_water.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  cavern_river_label: {
+    walkable: true,
+    image: "/images/tilesets/river_water.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  outdoor_area_label: {
+    walkable: true,
+    image: "/images/tilesets/dirt_and_grass.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  outdoor_road_label: {
+    walkable: true,
+    image: "/images/tilesets/dirt_and_grass.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  outdoor_lake_label: {
+    walkable: true,
+    image: "/images/tilesets/calm_water.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  outdoor_river_label: {
+    walkable: true,
+    image: "/images/tilesets/river_water.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  city_road_label: {
+    walkable: true,
+    image: "/images/tilesets/dark_stone_with_vines.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  city_building_label: {
+    walkable: true,
+    image: "/images/tilesets/wood_boards.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
+  outdoor_mountain_label: {
+    walkable: true,
+    image: "/images/tilesets/mountains.png",
+    size: 32,
+    tiles: 4,
+    isLabel: true,
+  },
 };
 
 // Helper function to get tile configuration

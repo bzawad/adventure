@@ -3,6 +3,7 @@
 // 2. Transform rooms to organic outdoor areas
 // 3. Widen corridors to natural paths
 // 4. Apply organic growth for natural appearance
+import { addOutdoorLabels } from "./labelUtils";
 
 const MIN_ROOM_SIZE = 5;
 const MAX_ROOM_SIZE = 9;
@@ -395,7 +396,9 @@ export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
     const c2 = areaCenter(a2);
     carveRiver(foundation.grid, c1, c2);
   }
-  return foundation.grid;
+
+  // Add labels
+  return addOutdoorLabels(foundation.grid, foundation.rooms, waterAreas);
 }
 
 // Returns CSS background-position for a 4x4 tileset (32px tiles)

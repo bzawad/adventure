@@ -1,4 +1,5 @@
 // Room and corridor-based dungeon generator for a 60x60 grid
+import { addDungeonLabels } from "./labelUtils";
 
 const MIN_ROOM_SIZE = 4;
 const MAX_ROOM_SIZE = 8;
@@ -67,44 +68,59 @@ function roomCenter(room) {
   };
 }
 
-function carveHorizontalCorridor(grid, x1, x2, y) {
-  for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
-    if (grid[y][x].type === "dungeon_wall") {
-      grid[y][x].type = "dungeon_corridor";
-      grid[y][x].tileX = randomInt(0, 3);
-      grid[y][x].tileY = randomInt(0, 3);
-    }
-  }
-}
-
-function carveVerticalCorridor(grid, y1, y2, x) {
-  for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-    if (grid[y][x].type === "dungeon_wall") {
-      grid[y][x].type = "dungeon_corridor";
-      grid[y][x].tileX = randomInt(0, 3);
-      grid[y][x].tileY = randomInt(0, 3);
-    }
-  }
-}
-
 function carveCorridor(grid, from, to) {
+  const path = [];
   if (Math.random() < 0.5) {
-    carveHorizontalCorridor(grid, from.x, to.x, from.y);
-    carveVerticalCorridor(grid, from.y, to.y, to.x);
+    // Horizontal then vertical
+    for (let x = Math.min(from.x, to.x); x <= Math.max(from.x, to.x); x++) {
+      if (grid[from.y][x].type === "dungeon_wall") {
+        grid[from.y][x].type = "dungeon_corridor";
+        grid[from.y][x].tileX = randomInt(0, 3);
+        grid[from.y][x].tileY = randomInt(0, 3);
+      }
+      path.push({ x, y: from.y });
+    }
+    for (let y = Math.min(from.y, to.y); y <= Math.max(from.y, to.y); y++) {
+      if (grid[y][to.x].type === "dungeon_wall") {
+        grid[y][to.x].type = "dungeon_corridor";
+        grid[y][to.x].tileX = randomInt(0, 3);
+        grid[y][to.x].tileY = randomInt(0, 3);
+      }
+      path.push({ x: to.x, y });
+    }
   } else {
-    carveVerticalCorridor(grid, from.y, to.y, from.x);
-    carveHorizontalCorridor(grid, from.x, to.x, to.y);
+    // Vertical then horizontal
+    for (let y = Math.min(from.y, to.y); y <= Math.max(from.y, to.y); y++) {
+      if (grid[y][from.x].type === "dungeon_wall") {
+        grid[y][from.x].type = "dungeon_corridor";
+        grid[y][from.x].tileX = randomInt(0, 3);
+        grid[y][from.x].tileY = randomInt(0, 3);
+      }
+      path.push({ x: from.x, y });
+    }
+    for (let x = Math.min(from.x, to.x); x <= Math.max(from.x, to.x); x++) {
+      if (grid[to.y][x].type === "dungeon_wall") {
+        grid[to.y][x].type = "dungeon_corridor";
+        grid[to.y][x].tileX = randomInt(0, 3);
+        grid[to.y][x].tileY = randomInt(0, 3);
+      }
+      path.push({ x, y: to.y });
+    }
   }
+  return path;
 }
 
 function connectRooms(grid, rooms) {
-  if (rooms.length < 2) return;
+  if (rooms.length < 2) return [];
+  const corridors = [];
   // Connect each room to the next, and the last to the first (loop)
   for (let i = 0; i < rooms.length; i++) {
     const curr = roomCenter(rooms[i]);
     const next = roomCenter(rooms[(i + 1) % rooms.length]);
-    carveCorridor(grid, curr, next);
+    const path = carveCorridor(grid, curr, next);
+    corridors.push({ number: `C${i + 1}`, path });
   }
+  return corridors;
 }
 
 export function generateDungeon(width = GRID_WIDTH, height = GRID_HEIGHT) {
@@ -115,7 +131,7 @@ export function generateDungeon(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // 3. Carve rooms
   rooms.forEach((room) => carveRoom(grid, room));
   // 4. Connect rooms with corridors
-  connectRooms(grid, rooms);
+  const corridors = connectRooms(grid, rooms);
   // 5. Fill in random tileX/tileY for remaining walls
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -125,7 +141,8 @@ export function generateDungeon(width = GRID_WIDTH, height = GRID_HEIGHT) {
       }
     }
   }
-  return grid;
+  // 6. Add labels
+  return addDungeonLabels(grid, rooms, corridors);
 }
 
 // Returns CSS background-position for a 4x4 tileset (32px tiles)
