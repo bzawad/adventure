@@ -154,13 +154,15 @@ function placeBuildings(grid, blocks) {
       else if (door.y === buildingY + buildingHeight - 1) doorSide = "bottom";
       else if (door.x === buildingX) doorSide = "left";
       else if (door.x === buildingX + buildingWidth - 1) doorSide = "right";
-      // Place the door (as road)
+      // Place the door (as floor, not road)
       if (door) {
         if (
           grid[door.y][door.x].type === "city_shrub" ||
           grid[door.y][door.x].type === "city_wall"
         ) {
-          grid[door.y][door.x].type = "city_road";
+          grid[door.y][door.x].type = "city_floor";
+          grid[door.y][door.x].tileX = randomInt(0, 3);
+          grid[door.y][door.x].tileY = randomInt(0, 3);
         }
         // Carve a path from the door to the nearest road
         carvePathToRoad(grid, door, doorSide, grid[0].length, grid.length);
