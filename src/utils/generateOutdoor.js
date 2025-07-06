@@ -4,8 +4,8 @@
 // 3. Widen corridors to natural paths
 // 4. Apply organic growth for natural appearance
 
-const MIN_ROOM_SIZE = 4;
-const MAX_ROOM_SIZE = 8;
+const MIN_ROOM_SIZE = 5;
+const MAX_ROOM_SIZE = 9;
 const MAX_ROOMS = 8;
 const MAX_ATTEMPTS = 50;
 const GRID_WIDTH = 60;
@@ -148,15 +148,36 @@ function generateOrganicArea(room) {
 
 // Transform traditional rooms into organic outdoor areas
 function transformRoomsToOutdoorAreas(grid, rooms) {
+  let mountainPlaced = false;
+
   const areas = rooms.map((room, index) => {
     const cells = generateOrganicArea(room);
-    return { cells, number: `A${index + 1}` };
+
+    // Check if this room could be a mountain (max size of 9)
+    const isMaxSize = room.width === MAX_ROOM_SIZE && room.height === MAX_ROOM_SIZE;
+    const isMountain = isMaxSize && !mountainPlaced && Math.random() < 0.5;
+
+    if (isMountain) {
+      mountainPlaced = true;
+    }
+
+    // 1 in 8 chance this area is water (but not if it's a mountain)
+    const isWater = !isMountain && Math.random() < 0.125;
+
+    return { cells, number: `A${index + 1}`, isWater, isMountain };
   });
+
   // Enhance grid with organic shapes
   areas.forEach((area) => {
     area.cells.forEach(({ x, y }) => {
       if (grid[y] && grid[y][x]) {
-        grid[y][x].type = "floor";
+        if (area.isMountain) {
+          grid[y][x].type = "mountain";
+        } else if (area.isWater) {
+          grid[y][x].type = "water";
+        } else {
+          grid[y][x].type = "floor";
+        }
         grid[y][x].tileX = randomInt(0, 3);
         grid[y][x].tileY = randomInt(0, 3);
       }
@@ -260,6 +281,72 @@ function generateTraditionalFoundation() {
   return { grid, rooms, corridors };
 }
 
+// Helper: Find center of an area
+function areaCenter(area) {
+  const n = area.cells.length;
+  const sum = area.cells.reduce(
+    (acc, cell) => ({ x: acc.x + cell.x, y: acc.y + cell.y }),
+    { x: 0, y: 0 },
+  );
+  return { x: Math.round(sum.x / n), y: Math.round(sum.y / n) };
+}
+
+// Helper: Carve a river corridor between two points (can overwrite any tile except water)
+function carveRiver(grid, from, to) {
+  let { x: x1, y: y1 } = from;
+  let { x: x2, y: y2 } = to;
+  // L-shaped path: horizontal then vertical or vice versa (randomize)
+  if (Math.random() < 0.5) {
+    // Horizontal then vertical
+    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dy = 0; dy < width; dy++) {
+        const yy = y1 + dy;
+        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "water") {
+          grid[yy][x].type = "river";
+          grid[yy][x].tileX = randomInt(0, 3);
+          grid[yy][x].tileY = randomInt(0, 3);
+        }
+      }
+    }
+    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dx = 0; dx < width; dx++) {
+        const xx = x2 + dx;
+        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "water") {
+          grid[y][xx].type = "river";
+          grid[y][xx].tileX = randomInt(0, 3);
+          grid[y][xx].tileY = randomInt(0, 3);
+        }
+      }
+    }
+  } else {
+    // Vertical then horizontal
+    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dx = 0; dx < width; dx++) {
+        const xx = x1 + dx;
+        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "water") {
+          grid[y][xx].type = "river";
+          grid[y][xx].tileX = randomInt(0, 3);
+          grid[y][xx].tileY = randomInt(0, 3);
+        }
+      }
+    }
+    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dy = 0; dy < width; dy++) {
+        const yy = y2 + dy;
+        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "water") {
+          grid[yy][x].type = "river";
+          grid[yy][x].tileX = randomInt(0, 3);
+          grid[yy][x].tileY = randomInt(0, 3);
+        }
+      }
+    }
+  }
+}
+
 // Main outdoor generation function
 export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // Use hybrid approach for reliable connectivity
@@ -275,6 +362,33 @@ export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
         foundation.grid[y][x].tileY = randomInt(0, 3);
       }
     }
+  }
+  // Add rivers based on map features
+  const waterAreas = areas.filter((a) => a.isWater);
+  const mountainAreas = areas.filter((a) => a.isMountain);
+
+  // If there's both a mountain and a lake, create a river from mountain to lake
+  if (mountainAreas.length > 0 && waterAreas.length > 0) {
+    const mountainArea = mountainAreas[0]; // Take the first mountain
+    const waterArea = waterAreas[Math.floor(Math.random() * waterAreas.length)]; // Pick a random lake
+    const mountainCenter = areaCenter(mountainArea);
+    const waterCenter = areaCenter(waterArea);
+    carveRiver(foundation.grid, mountainCenter, waterCenter);
+  }
+
+  // Add a river between water areas if there are 2+ water areas
+  if (waterAreas.length >= 2) {
+    // Pick two water areas (randomly)
+    const [a1, a2] =
+      waterAreas.length === 2
+        ? waterAreas
+        : [
+          waterAreas[0],
+          waterAreas[1 + Math.floor(Math.random() * (waterAreas.length - 1))],
+        ];
+    const c1 = areaCenter(a1);
+    const c2 = areaCenter(a2);
+    carveRiver(foundation.grid, c1, c2);
   }
   return foundation.grid;
 }

@@ -45,6 +45,21 @@ const TILESETS = {
       size: 32,
       tiles: 4,
     },
+    water: {
+      image: "/images/tilesets/calm_water.png",
+      size: 32,
+      tiles: 4,
+    },
+    river: {
+      image: "/images/tilesets/river_water.png",
+      size: 32,
+      tiles: 4,
+    },
+    mountain: {
+      image: "/images/tilesets/mountains.png",
+      size: 32,
+      tiles: 4,
+    },
   },
   city: {
     wall: {
@@ -83,7 +98,7 @@ const DungeonMap = ({
     if (mapType === "cavern") {
       newMap = generateCavern(width, height, minFloorTiles);
     } else if (mapType === "outdoor") {
-      newMap = generateOutdoor(width, height, minFloorTiles);
+      newMap = generateOutdoor(width, height);
     } else if (mapType === "city") {
       newMap = generateCity(width, height);
     } else {
@@ -104,10 +119,18 @@ const DungeonMap = ({
           ? "url(/images/tilesets/light_brown_cavern.png)"
           : "url(/images/tilesets/red_brown_cavern.png)";
     } else if (mapType === "outdoor") {
-      backgroundImage =
-        tile.type === "floor" || tile.type === "corridor"
-          ? "url(/images/tilesets/dirt_and_grass.png)"
-          : "url(/images/tilesets/green_shrubs.png)";
+      if (tile.type === "water") {
+        backgroundImage = `url(${TILESETS.outdoor.water.image})`;
+      } else if (tile.type === "river") {
+        backgroundImage = `url(${TILESETS.outdoor.river.image})`;
+      } else if (tile.type === "mountain") {
+        backgroundImage = `url(${TILESETS.outdoor.mountain.image})`;
+      } else {
+        backgroundImage =
+          tile.type === "floor" || tile.type === "corridor"
+            ? "url(/images/tilesets/dirt_and_grass.png)"
+            : "url(/images/tilesets/green_shrubs.png)";
+      }
     } else if (mapType === "city") {
       const tileset = TILESETS.city[tile.type] || TILESETS.city.shrub;
       backgroundImage = `url(${tileset.image})`;
@@ -152,6 +175,14 @@ const DungeonMap = ({
     return dungeon.flat().filter((tile) => tile.type === "shrub").length;
   };
 
+  const countMountainTiles = () => {
+    return dungeon.flat().filter((tile) => tile.type === "mountain").length;
+  };
+
+  const countRiverTiles = () => {
+    return dungeon.flat().filter((tile) => tile.type === "river").length;
+  };
+
   const getMapTitle = () => {
     if (mapType === "cavern") return "Cavern Map Generator";
     if (mapType === "outdoor") return "Outdoor Map Generator";
@@ -177,6 +208,14 @@ const DungeonMap = ({
               <span>Wall tiles: {countWallTiles()}</span>
               <span>Road tiles: {countRoadTiles()}</span>
               <span>Shrub tiles: {countShrubTiles()}</span>
+            </>
+          ) : mapType === "outdoor" ? (
+            <>
+              <span>Floor tiles: {countFloorTiles()}</span>
+              <span>Wall tiles: {countWallTiles()}</span>
+              <span>Corridor tiles: {countCorridorTiles()}</span>
+              <span>Mountain tiles: {countMountainTiles()}</span>
+              <span>River tiles: {countRiverTiles()}</span>
             </>
           ) : (
             <>
