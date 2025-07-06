@@ -28,10 +28,18 @@ const DungeonMap = ({
   }, [width, height, minFloorTiles, mapType]);
 
   const getTileStyle = (tile) => {
-    const backgroundImage =
-      tile.type === "floor" || tile.type === "corridor"
-        ? "url(/images/tilesets/light_cracked_stone.png)"
-        : "url(/images/tilesets/dark_stone_with_vines.png)";
+    let backgroundImage;
+    if (mapType === "cavern") {
+      backgroundImage =
+        tile.type === "floor" || tile.type === "corridor"
+          ? "url(/images/tilesets/light_brown_cavern.png)"
+          : "url(/images/tilesets/red_brown_cavern.png)";
+    } else {
+      backgroundImage =
+        tile.type === "floor" || tile.type === "corridor"
+          ? "url(/images/tilesets/light_cracked_stone.png)"
+          : "url(/images/tilesets/dark_stone_with_vines.png)";
+    }
 
     const backgroundPosition = getTileBackgroundPosition(
       tile.tileX,
@@ -44,7 +52,6 @@ const DungeonMap = ({
       backgroundSize: "128px 128px", // 4x4 tiles * 32px each
       width: "32px",
       height: "32px",
-      border: "1px solid #333",
     };
   };
 
