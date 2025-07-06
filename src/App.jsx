@@ -3,7 +3,7 @@ import DungeonMap from "./components/DungeonMap.jsx";
 import "./App.css";
 
 export default function App() {
-  const [mapType, setMapType] = useState("dungeon"); // "dungeon" or "cavern"
+  const [mapType, setMapType] = useState("dungeon"); // "dungeon" or "cavern" or "outdoor"
 
   return (
     <div className="App">
@@ -19,6 +19,12 @@ export default function App() {
           onClick={() => setMapType("cavern")}
         >
           Cavern Generator
+        </button>
+        <button
+          className={`type-button ${mapType === "outdoor" ? "active" : ""}`}
+          onClick={() => setMapType("outdoor")}
+        >
+          Outdoor Generator
         </button>
       </div>
       <DungeonMap mapType={mapType} />

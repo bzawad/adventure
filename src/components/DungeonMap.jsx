@@ -5,6 +5,7 @@ import {
   getTileBackgroundPosition,
 } from "../utils/generateDungeon";
 import { generateCavern } from "../utils/generateCavern";
+import { generateOutdoor } from "../utils/generateOutdoor";
 import "./DungeonMap.css";
 
 const DungeonMap = ({
@@ -16,10 +17,14 @@ const DungeonMap = ({
   const [dungeon, setDungeon] = useState([]);
 
   const generateNewMap = () => {
-    const newMap =
-      mapType === "cavern"
-        ? generateCavern(width, height, minFloorTiles)
-        : generateDungeon(width, height, minFloorTiles);
+    let newMap;
+    if (mapType === "cavern") {
+      newMap = generateCavern(width, height, minFloorTiles);
+    } else if (mapType === "outdoor") {
+      newMap = generateOutdoor(width, height, minFloorTiles);
+    } else {
+      newMap = generateDungeon(width, height, minFloorTiles);
+    }
     setDungeon(newMap);
   };
 
@@ -34,6 +39,11 @@ const DungeonMap = ({
         tile.type === "floor" || tile.type === "corridor"
           ? "url(/images/tilesets/light_brown_cavern.png)"
           : "url(/images/tilesets/red_brown_cavern.png)";
+    } else if (mapType === "outdoor") {
+      backgroundImage =
+        tile.type === "floor" || tile.type === "corridor"
+          ? "url(/images/tilesets/dirt_and_grass.png)"
+          : "url(/images/tilesets/green_shrubs.png)";
     } else {
       backgroundImage =
         tile.type === "floor" || tile.type === "corridor"
@@ -68,15 +78,15 @@ const DungeonMap = ({
   };
 
   const getMapTitle = () => {
-    return mapType === "cavern"
-      ? "Cavern Map Generator"
-      : "Dungeon Map Generator";
+    if (mapType === "cavern") return "Cavern Map Generator";
+    if (mapType === "outdoor") return "Outdoor Map Generator";
+    return "Dungeon Map Generator";
   };
 
   const getGenerateButtonText = () => {
-    return mapType === "cavern"
-      ? "Generate New Cavern"
-      : "Generate New Dungeon";
+    if (mapType === "cavern") return "Generate New Cavern";
+    if (mapType === "outdoor") return "Generate New Outdoor";
+    return "Generate New Dungeon";
   };
 
   return (
@@ -115,7 +125,7 @@ DungeonMap.propTypes = {
   width: PropTypes.number,
   height: PropTypes.number,
   minFloorTiles: PropTypes.number,
-  mapType: PropTypes.oneOf(["dungeon", "cavern"]),
+  mapType: PropTypes.oneOf(["dungeon", "cavern", "outdoor"]),
 };
 
 export default DungeonMap;
