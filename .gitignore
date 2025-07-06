@@ -68,4 +68,8 @@ coverage/
 .LSOverride
 
 # Windows
-$RECYCLE.BIN/ 
+$RECYCLE.BIN/
+
+# Vite
+.vite/
+vite.pid 

@@ -1,11 +1,11 @@
 # Dungeon Map Generator
 
-A React-based dungeon map generator that creates random 20x20 grid layouts using tileset images.
+A React-based dungeon map generator that creates random 60x60 grid layouts using tileset images, built with Vite.
 
 ## Features
 
-- **20x20 Grid Layout**: Generates dungeons with configurable dimensions
-- **Random Generation**: Creates random wall and floor patterns with a minimum of 100 floor tiles
+- **60x60 Grid Layout**: Generates dungeons with configurable dimensions
+- **Random Generation**: Creates random room and corridor patterns
 - **Tileset Support**: Uses 4x4 tileset images for varied tile appearances
 - **Interactive Display**: Hover effects and tile information on mouse over
 - **Responsive Design**: Adapts to different screen sizes
@@ -16,20 +16,21 @@ A React-based dungeon map generator that creates random 20x20 grid layouts using
 ```
 adventure/
 ├── public/
-│   ├── images/tilesets/
-│   │   ├── light_cracked_stone.png    # Floor tileset
-│   │   └── dark_stone_with_vines.png  # Wall tileset
-│   └── index.html
+│   └── images/tilesets/
+│       ├── light_cracked_stone.png    # Floor tileset
+│       └── dark_stone_with_vines.png  # Wall tileset
 ├── src/
 │   ├── components/
 │   │   ├── DungeonMap.jsx             # Main dungeon display component
 │   │   └── DungeonMap.css             # Component styles
 │   ├── utils/
 │   │   └── generateDungeon.js         # Dungeon generation logic
-│   ├── App.js                         # Main app component
+│   ├── App.jsx                        # Main app component
 │   ├── App.css                        # App-level styles
-│   ├── index.js                       # React entry point
+│   ├── main.jsx                       # React entry point
 │   └── index.css                      # Global styles
+├── index.html                         # Vite entry point
+├── vite.config.js                     # Vite configuration
 └── package.json
 ```
 
@@ -53,17 +54,24 @@ adventure/
 Start the development server:
 
 ```bash
-npm start
+npm run dev
 ```
 
-The application will open at `http://localhost:3000`
+Or use the provided scripts:
+
+```bash
+bash start.sh  # Start the server
+bash stop.sh   # Stop the server
+```
+
+The application will open at `http://localhost:5173`
 
 ### Available Scripts
 
-- `npm start` - Start development server
-- `npm build` - Build for production
-- `npm test` - Run tests
-- `npm eject` - Eject from Create React App
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `bash checks.sh` - Run code quality checks (Prettier, ESLint, TypeScript, Vite build, npm audit)
 
 ## How It Works
 
@@ -71,10 +79,11 @@ The application will open at `http://localhost:3000`
 
 The `generateDungeon.js` utility creates dungeons by:
 
-1. **Grid Creation**: Creates a 20x20 grid
-2. **Random Wall Placement**: Randomly places walls while ensuring at least 100 floor tiles remain
-3. **Tile Variation**: Each tile uses a random section from the 4x4 tileset grid
-4. **Background Positioning**: Uses CSS background positioning to display the correct tile section
+1. **Grid Creation**: Creates a 60x60 grid
+2. **Room Generation**: Randomly places 4-8 rooms of varying sizes
+3. **Corridor Connection**: Connects rooms with corridors
+4. **Tile Variation**: Each tile uses a random section from the 4x4 tileset grid
+5. **Background Positioning**: Uses CSS background positioning to display the correct tile section
 
 ### Tileset System
 
@@ -115,10 +124,12 @@ The modular design allows for easy evolution to:
 
 ## Technical Details
 
+- **Build Tool**: Vite for fast development and optimized builds
 - **Grid System**: CSS Flexbox for responsive layout
 - **Tile Rendering**: CSS background images with positioning
 - **State Management**: React hooks for component state
 - **Performance**: Efficient rendering with React keys and memoization
+- **Testing**: Vitest for unit testing
 
 ## Browser Support
 
