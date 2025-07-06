@@ -3,7 +3,7 @@
 // 2. Transform rooms to organic cavern chambers
 // 3. Widen corridors to natural passages
 // 4. Apply organic growth for natural appearance
-import { addCavernLabels } from "./labelUtils";
+import { addCavernLabels, assignAreaIds } from "./labelUtils";
 
 const MIN_ROOM_SIZE = 4;
 const MAX_ROOM_SIZE = 8;
@@ -165,7 +165,12 @@ function transformRoomsToCaverns(grid, rooms) {
   // Enhance grid with organic shapes
   caverns.forEach((cavern) => {
     cavern.cells.forEach(({ x, y }) => {
-      if (grid[y] && grid[y][x]) {
+      if (
+        grid[y] &&
+        grid[y][x] &&
+        (grid[y][x].type === "cavern_wall" ||
+          grid[y][x].type === "cavern_corridor")
+      ) {
         grid[y][x].type = "cavern_floor";
         grid[y][x].tileX = randomInt(0, 3);
         grid[y][x].tileY = randomInt(0, 3);
@@ -278,7 +283,7 @@ function cavernCenter(cavern) {
   return { x: Math.round(sum.x / n), y: Math.round(sum.y / n) };
 }
 
-// Helper: Carve a river corridor between two points (can overwrite any tile except water)
+// Helper: Carve a river corridor between two points (preserves area continuity)
 function carveRiver(grid, from, to) {
   let { x: x1, y: y1 } = from;
   let { x: x2, y: y2 } = to;
@@ -290,7 +295,10 @@ function carveRiver(grid, from, to) {
       for (let dy = 0; dy < width; dy++) {
         const yy = y1 + dy;
         if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "cavern_lake") {
+          // Store original type for area continuity
+          const originalType = grid[yy][x].type;
           grid[yy][x].type = "cavern_river";
+          grid[yy][x].originalType = originalType;
           grid[yy][x].tileX = randomInt(0, 3);
           grid[yy][x].tileY = randomInt(0, 3);
         }
@@ -301,7 +309,10 @@ function carveRiver(grid, from, to) {
       for (let dx = 0; dx < width; dx++) {
         const xx = x2 + dx;
         if (grid[y] && grid[y][xx] && grid[y][xx].type !== "cavern_lake") {
+          // Store original type for area continuity
+          const originalType = grid[y][xx].type;
           grid[y][xx].type = "cavern_river";
+          grid[y][xx].originalType = originalType;
           grid[y][xx].tileX = randomInt(0, 3);
           grid[y][xx].tileY = randomInt(0, 3);
         }
@@ -314,7 +325,10 @@ function carveRiver(grid, from, to) {
       for (let dx = 0; dx < width; dx++) {
         const xx = x1 + dx;
         if (grid[y] && grid[y][xx] && grid[y][xx].type !== "cavern_lake") {
+          // Store original type for area continuity
+          const originalType = grid[y][xx].type;
           grid[y][xx].type = "cavern_river";
+          grid[y][xx].originalType = originalType;
           grid[y][xx].tileX = randomInt(0, 3);
           grid[y][xx].tileY = randomInt(0, 3);
         }
@@ -325,7 +339,10 @@ function carveRiver(grid, from, to) {
       for (let dy = 0; dy < width; dy++) {
         const yy = y2 + dy;
         if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "cavern_lake") {
+          // Store original type for area continuity
+          const originalType = grid[yy][x].type;
           grid[yy][x].type = "cavern_river";
+          grid[yy][x].originalType = originalType;
           grid[yy][x].tileX = randomInt(0, 3);
           grid[yy][x].tileY = randomInt(0, 3);
         }
@@ -389,6 +406,12 @@ export function generateCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
       }
     }
   }
+
+  // Assign areaIds to all walkable tiles
+  assignAreaIds(foundation.grid, "cavern_floor", "chamber");
+  assignAreaIds(foundation.grid, "cavern_corridor", "corridor");
+  assignAreaIds(foundation.grid, "cavern_lake", "lake");
+  assignAreaIds(foundation.grid, "cavern_river", "river");
 
   // Add labels
   return addCavernLabels(foundation.grid, caverns, lakeCaverns);

@@ -72,126 +72,134 @@ export function isValidLabelPosition(grid, x, y) {
 }
 
 // Add labels to dungeon rooms and corridors
-export function addDungeonLabels(grid, rooms, corridors) {
+export function addDungeonLabels(grid, rooms) {
   const newGrid = JSON.parse(JSON.stringify(grid)); // Deep copy
 
-  // Add room labels
+  // Add room labels (areaId already assigned during generation)
   rooms.forEach((room, index) => {
-    const center = roomCenter(room);
-    const position = findLabelPosition(newGrid, center.x, center.y);
+    // Collect all room floor positions
+    const positions = [];
+    for (let y = room.y; y < room.y + room.height; y++) {
+      for (let x = room.x; x < room.x + room.width; x++) {
+        if (newGrid[y][x].type === "dungeon_floor") {
+          positions.push({ x, y });
+        }
+      }
+    }
+    const position = findLabelPositionForType(
+      newGrid,
+      positions,
+      "dungeon_floor",
+    );
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "dungeon_room_label",
-        label: `R${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `R${index + 1}`;
     }
   });
 
-  // Add corridor labels
-  corridors.forEach((corridor, index) => {
-    // Find center of corridor path
-    const centerX = Math.floor(
-      corridor.path.reduce((sum, pos) => sum + pos.x, 0) / corridor.path.length,
+  // Add corridor labels - group by areaId
+  const corridorPositions = [];
+  for (let y = 0; y < newGrid.length; y++) {
+    for (let x = 0; x < newGrid[y].length; x++) {
+      if (newGrid[y][x].type === "dungeon_corridor") {
+        corridorPositions.push({ x, y });
+      }
+    }
+  }
+  const corridorAreas = groupByAreaId(newGrid, corridorPositions, "corridor");
+  corridorAreas.forEach((corridor, index) => {
+    const position = findLabelPositionForType(
+      newGrid,
+      corridor,
+      "dungeon_corridor",
     );
-    const centerY = Math.floor(
-      corridor.path.reduce((sum, pos) => sum + pos.y, 0) / corridor.path.length,
-    );
-
-    const position = findLabelPosition(newGrid, centerX, centerY);
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "dungeon_corridor_label",
-        label: `C${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `C${index + 1}`;
     }
   });
 
   return newGrid;
 }
 
-// Add labels to cavern chambers, tunnels, lakes, and rivers
-export function addCavernLabels(grid, caverns, lakeCaverns = []) {
-  const newGrid = JSON.parse(JSON.stringify(grid));
+// Helper function to group positions by their areaId
+function groupByAreaId(grid, positions, areaIdPrefix) {
+  const groups = {};
 
-  // Add chamber labels (skip if all cells are lake tiles)
-  caverns.forEach((cavern, index) => {
-    const allLake = cavern.cells.every(
-      ({ x, y }) => newGrid[y][x].type === "cavern_lake",
-    );
-    if (allLake) return;
-    const center = cavernCenter(cavern);
-    const position = findLabelPosition(newGrid, center.x, center.y);
-    if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "cavern_chamber_label",
-        label: `C${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+  positions.forEach(({ x, y }) => {
+    const tile = grid[y][x];
+    if (tile.areaId && tile.areaId.startsWith(areaIdPrefix)) {
+      if (!groups[tile.areaId]) {
+        groups[tile.areaId] = [];
+      }
+      groups[tile.areaId].push({ x, y });
     }
   });
 
-  // Add tunnel labels (for corridors)
+  return Object.values(groups);
+}
+
+// Add labels to cavern chambers, tunnels, lakes, and rivers
+export function addCavernLabels(grid) {
+  const newGrid = JSON.parse(JSON.stringify(grid));
+
+  // Add chamber labels - group by areaId
+  const chamberPositions = [];
+  for (let y = 0; y < newGrid.length; y++) {
+    for (let x = 0; x < newGrid[y].length; x++) {
+      if (newGrid[y][x].type === "cavern_floor") {
+        chamberPositions.push({ x, y });
+      }
+    }
+  }
+  const chambers = groupByAreaId(newGrid, chamberPositions, "chamber");
+  chambers.forEach((chamber, index) => {
+    const position = findLabelPositionForType(newGrid, chamber, "cavern_floor");
+    if (position) {
+      newGrid[position.y][position.x].label = `C${index + 1}`;
+    }
+  });
+
+  // Add tunnel labels - group by areaId
   const corridorPositions = [];
   for (let y = 0; y < newGrid.length; y++) {
     for (let x = 0; x < newGrid[y].length; x++) {
       if (
         newGrid[y][x].type === "cavern_corridor" ||
-        newGrid[y][x].type === "cavern_river"
+        (newGrid[y][x].originalType &&
+          newGrid[y][x].originalType === "cavern_corridor")
       ) {
         corridorPositions.push({ x, y });
       }
     }
   }
-  // Group adjacent corridor/river positions into tunnels
-  const tunnels = groupAdjacentPositions(corridorPositions);
+  const tunnels = groupByAreaId(newGrid, corridorPositions, "corridor");
   tunnels.forEach((tunnel, index) => {
-    // If all tiles in the tunnel are river, skip labeling as tunnel
-    const allRiver = tunnel.every(
-      ({ x, y }) => newGrid[y][x].type === "cavern_river",
+    // Find a position that's actually a corridor tile (not a river) for the label
+    const position = tunnel.find(
+      ({ x, y }) => newGrid[y][x].type === "cavern_corridor",
     );
-    if (allRiver) return;
-    const centerX = Math.floor(
-      tunnel.reduce((sum, pos) => sum + pos.x, 0) / tunnel.length,
-    );
-    const centerY = Math.floor(
-      tunnel.reduce((sum, pos) => sum + pos.y, 0) / tunnel.length,
-    );
-    const position = findLabelPosition(newGrid, centerX, centerY);
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "cavern_tunnel_label",
-        label: `T${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `T${index + 1}`;
     }
   });
 
-  // Add lake labels
-  lakeCaverns.forEach((lake, index) => {
-    const center = cavernCenter(lake);
-    const position = findLabelPosition(newGrid, center.x, center.y);
+  // Add lake labels - group by areaId
+  const lakePositions = [];
+  for (let y = 0; y < newGrid.length; y++) {
+    for (let x = 0; x < newGrid[y].length; x++) {
+      if (newGrid[y][x].type === "cavern_lake") {
+        lakePositions.push({ x, y });
+      }
+    }
+  }
+  const lakes = groupByAreaId(newGrid, lakePositions, "lake");
+  lakes.forEach((lake, index) => {
+    const position = findLabelPositionForType(newGrid, lake, "cavern_lake");
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "cavern_lake_label",
-        label: `L${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `L${index + 1}`;
     }
   });
 
-  // Add river labels (find river tiles and group them)
+  // Add river labels - group by areaId
   const riverPositions = [];
   for (let y = 0; y < newGrid.length; y++) {
     for (let x = 0; x < newGrid[y].length; x++) {
@@ -200,25 +208,11 @@ export function addCavernLabels(grid, caverns, lakeCaverns = []) {
       }
     }
   }
-
-  const rivers = groupAdjacentPositions(riverPositions);
+  const rivers = groupByAreaId(newGrid, riverPositions, "river");
   rivers.forEach((river, index) => {
-    const centerX = Math.floor(
-      river.reduce((sum, pos) => sum + pos.x, 0) / river.length,
-    );
-    const centerY = Math.floor(
-      river.reduce((sum, pos) => sum + pos.y, 0) / river.length,
-    );
-
-    const position = findLabelPosition(newGrid, centerX, centerY);
+    const position = findLabelPositionForType(newGrid, river, "cavern_river");
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "cavern_river_label",
-        label: `V${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `V${index + 1}`;
     }
   });
 
@@ -228,133 +222,102 @@ export function addCavernLabels(grid, caverns, lakeCaverns = []) {
 // Add labels to outdoor areas, roads, lakes, and rivers
 export function addOutdoorLabels(grid, rooms, lakeRooms = []) {
   const newGrid = JSON.parse(JSON.stringify(grid));
-  const mountainAreas = [];
 
   // Add area labels (skip if all cells are lake tiles, or if area contains mountains)
   rooms.forEach((room, index) => {
-    // Reconstruct area cells for the room
-    const cells = [];
-    for (let y = room.y; y < room.y + room.height; y++) {
-      for (let x = room.x; x < room.x + room.width; x++) {
-        cells.push({ x, y });
-      }
-    }
+    const area = room.cells ? room : null;
+    const cells = area ? area.cells : [];
     const allLake = cells.every(
       ({ x, y }) => newGrid[y][x].type === "outdoor_lake",
     );
     const hasMountains = cells.some(
       ({ x, y }) => newGrid[y][x].type === "outdoor_mountain",
     );
-    if (allLake) return;
-    if (hasMountains) {
-      mountainAreas.push({ room, cells });
-      return;
-    }
-    const center = roomCenter(room);
-    const position = findLabelPosition(newGrid, center.x, center.y);
+    if (allLake || hasMountains) return;
+    const positions = cells.filter(
+      ({ x, y }) => newGrid[y][x].type === "outdoor_area",
+    );
+    const position = findLabelPositionForType(
+      newGrid,
+      positions,
+      "outdoor_area",
+    );
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "outdoor_area_label",
-        label: `A${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `A${index + 1}`;
     }
   });
 
-  // Add mountain labels (M1, M2, ...) for each mountain area
-  mountainAreas.forEach((mountain, index) => {
-    const center = roomCenter(mountain.room);
-    let labelPos = null;
-    // If center is a mountain, use it; otherwise, find nearest mountain tile in the area
-    if (newGrid[center.y][center.x].type === "outdoor_mountain") {
-      labelPos = center;
-    } else {
-      // Find the closest mountain tile to the center within the area
-      let minDist = Infinity;
-      mountain.cells.forEach(({ x, y }) => {
-        if (newGrid[y][x].type === "outdoor_mountain") {
-          const dist = Math.abs(center.x - x) + Math.abs(center.y - y);
-          if (dist < minDist) {
-            minDist = dist;
-            labelPos = { x, y };
-          }
-        }
-      });
+  // Add mountain labels - group by areaId
+  const mountainPositions = [];
+  for (let y = 0; y < newGrid.length; y++) {
+    for (let x = 0; x < newGrid[y].length; x++) {
+      if (newGrid[y][x].type === "outdoor_mountain") {
+        mountainPositions.push({ x, y });
+      }
     }
-    if (labelPos) {
-      newGrid[labelPos.y][labelPos.x] = {
-        ...newGrid[labelPos.y][labelPos.x],
-        type: "outdoor_mountain_label",
-        label: `M${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+  }
+  const mountains = groupByAreaId(newGrid, mountainPositions, "mountain");
+  mountains.forEach((mountain, index) => {
+    const position = findLabelPositionForType(
+      newGrid,
+      mountain,
+      "outdoor_mountain",
+    );
+    if (position) {
+      newGrid[position.y][position.x].label = `M${index + 1}`;
     }
   });
 
-  // Add road labels (for roads and rivers)
+  // Add road labels - group by areaId
   const roadPositions = [];
   for (let y = 0; y < newGrid.length; y++) {
     for (let x = 0; x < newGrid[y].length; x++) {
       if (
         newGrid[y][x].type === "outdoor_road" ||
-        newGrid[y][x].type === "outdoor_river"
+        (newGrid[y][x].originalType &&
+          newGrid[y][x].originalType === "outdoor_road")
       ) {
         roadPositions.push({ x, y });
       }
     }
   }
-  const roads = groupAdjacentPositions(roadPositions);
+  const roads = groupByAreaId(newGrid, roadPositions, "road");
   roads.forEach((road, index) => {
-    // If all tiles in the road are river, skip labeling as road
-    const allRiver = road.every(
-      ({ x, y }) => newGrid[y][x].type === "outdoor_river",
+    const position = road.find(
+      ({ x, y }) => newGrid[y][x].type === "outdoor_road",
     );
-    if (allRiver) return;
-    const centerX = Math.floor(
-      road.reduce((sum, pos) => sum + pos.x, 0) / road.length,
-    );
-    const centerY = Math.floor(
-      road.reduce((sum, pos) => sum + pos.y, 0) / road.length,
-    );
-    const position = findLabelPosition(newGrid, centerX, centerY);
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "outdoor_road_label",
-        label: `R${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `R${index + 1}`;
     }
   });
 
   // Add lake labels
   lakeRooms.forEach((lake, index) => {
-    // Handle both room objects and area objects
-    let center;
+    let cells;
     if (lake.cells) {
-      // Area object with cells
-      center = cavernCenter(lake);
+      cells = lake.cells;
     } else {
-      // Room object with x, y, width, height
-      center = roomCenter(lake);
+      cells = [];
+      for (let y = lake.y; y < lake.y + lake.height; y++) {
+        for (let x = lake.x; x < lake.x + lake.width; x++) {
+          cells.push({ x, y });
+        }
+      }
     }
-    const position = findLabelPosition(newGrid, center.x, center.y);
+    const positions = cells.filter(
+      ({ x, y }) => newGrid[y][x].type === "outdoor_lake",
+    );
+    const position = findLabelPositionForType(
+      newGrid,
+      positions,
+      "outdoor_lake",
+    );
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "outdoor_lake_label",
-        label: `L${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `L${index + 1}`;
     }
   });
 
-  // Add river labels
+  // Add river labels - group by areaId
   const riverPositions = [];
   for (let y = 0; y < newGrid.length; y++) {
     for (let x = 0; x < newGrid[y].length; x++) {
@@ -363,25 +326,11 @@ export function addOutdoorLabels(grid, rooms, lakeRooms = []) {
       }
     }
   }
-
-  const rivers = groupAdjacentPositions(riverPositions);
+  const rivers = groupByAreaId(newGrid, riverPositions, "river");
   rivers.forEach((river, index) => {
-    const centerX = Math.floor(
-      river.reduce((sum, pos) => sum + pos.x, 0) / river.length,
-    );
-    const centerY = Math.floor(
-      river.reduce((sum, pos) => sum + pos.y, 0) / river.length,
-    );
-
-    const position = findLabelPosition(newGrid, centerX, centerY);
+    const position = findLabelPositionForType(newGrid, river, "outdoor_river");
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "outdoor_river_label",
-        label: `V${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `V${index + 1}`;
     }
   });
 
@@ -392,7 +341,7 @@ export function addOutdoorLabels(grid, rooms, lakeRooms = []) {
 export function addCityLabels(grid) {
   const newGrid = JSON.parse(JSON.stringify(grid));
 
-  // Add road labels
+  // Add road labels - group by areaId
   const roadPositions = [];
   for (let y = 0; y < newGrid.length; y++) {
     for (let x = 0; x < newGrid[y].length; x++) {
@@ -401,29 +350,15 @@ export function addCityLabels(grid) {
       }
     }
   }
-
-  const roads = groupAdjacentPositions(roadPositions);
+  const roads = groupByAreaId(newGrid, roadPositions, "road");
   roads.forEach((road, index) => {
-    const centerX = Math.floor(
-      road.reduce((sum, pos) => sum + pos.x, 0) / road.length,
-    );
-    const centerY = Math.floor(
-      road.reduce((sum, pos) => sum + pos.y, 0) / road.length,
-    );
-
-    const position = findLabelPosition(newGrid, centerX, centerY);
+    const position = findLabelPositionForType(newGrid, road, "city_road");
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "city_road_label",
-        label: `R${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `R${index + 1}`;
     }
   });
 
-  // Add building labels (floor areas)
+  // Add building labels - group by areaId
   const buildingPositions = [];
   for (let y = 0; y < newGrid.length; y++) {
     for (let x = 0; x < newGrid[y].length; x++) {
@@ -432,78 +367,89 @@ export function addCityLabels(grid) {
       }
     }
   }
-
-  const buildings = groupAdjacentPositions(buildingPositions);
+  const buildings = groupByAreaId(newGrid, buildingPositions, "building");
   buildings.forEach((building, index) => {
-    const centerX = Math.floor(
-      building.reduce((sum, pos) => sum + pos.x, 0) / building.length,
-    );
-    const centerY = Math.floor(
-      building.reduce((sum, pos) => sum + pos.y, 0) / building.length,
-    );
-
-    const position = findLabelPosition(newGrid, centerX, centerY);
+    const position = findLabelPositionForType(newGrid, building, "city_floor");
     if (position) {
-      newGrid[position.y][position.x] = {
-        ...newGrid[position.y][position.x],
-        type: "city_building_label",
-        label: `B${index + 1}`,
-        tileX: 0,
-        tileY: 0,
-      };
+      newGrid[position.y][position.x].label = `B${index + 1}`;
     }
   });
 
   return newGrid;
 }
 
-// Helper function to group adjacent positions into connected areas
-function groupAdjacentPositions(positions) {
-  if (!positions || positions.length === 0) return [];
+// Helper: Find a suitable position for a label in a group of positions, only on the correct tile type
+function findLabelPositionForType(grid, positions, requiredType) {
+  // Try the center first
+  const n = positions.length;
+  const center = positions[Math.floor(n / 2)];
+  if (center && grid[center.y][center.x].type === requiredType) {
+    return center;
+  }
+  // Try all positions
+  for (const pos of positions) {
+    if (grid[pos.y][pos.x].type === requiredType) {
+      return pos;
+    }
+  }
+  return null;
+}
 
-  const groups = [];
-  const visited = new Set();
+// Utility: Assign areaIds to all contiguous regions of a given typePrefix
+export function assignAreaIds(grid, typePrefix, idPrefix) {
+  const height = grid.length;
+  const width = grid[0].length;
+  const visited = Array.from({ length: height }, () =>
+    Array(width).fill(false),
+  );
+  let areaCount = 0;
 
-  positions.forEach((pos) => {
-    if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") return;
-    if (visited.has(`${pos.x},${pos.y}`)) return;
-
-    const group = [];
-    const queue = [pos];
-
-    while (queue.length > 0) {
-      const current = queue.shift();
-      if (!current) continue;
-
-      const key = `${current.x},${current.y}`;
-
-      if (visited.has(key)) continue;
-      visited.add(key);
-      group.push(current);
-
-      // Check adjacent positions
-      const adjacent = [
-        { x: current.x - 1, y: current.y },
-        { x: current.x + 1, y: current.y },
-        { x: current.x, y: current.y - 1 },
-        { x: current.x, y: current.y + 1 },
-      ];
-
-      adjacent.forEach((adj) => {
-        const adjKey = `${adj.x},${adj.y}`;
+  function floodFill(sx, sy) {
+    const stack = [{ x: sx, y: sy }];
+    const cells = [];
+    visited[sy][sx] = true;
+    while (stack.length > 0) {
+      const { x, y } = stack.pop();
+      cells.push({ x, y });
+      [
+        { x: x - 1, y },
+        { x: x + 1, y },
+        { x, y: y - 1 },
+        { x, y: y + 1 },
+      ].forEach(({ x: nx, y: ny }) => {
         if (
-          !visited.has(adjKey) &&
-          positions.some((p) => p && p.x === adj.x && p.y === adj.y)
+          nx >= 0 &&
+          nx < width &&
+          ny >= 0 &&
+          ny < height &&
+          !visited[ny][nx] &&
+          (grid[ny][nx].type.startsWith(typePrefix) ||
+            (grid[ny][nx].originalType &&
+              grid[ny][nx].originalType.startsWith(typePrefix)))
         ) {
-          queue.push(adj);
+          visited[ny][nx] = true;
+          stack.push({ x: nx, y: ny });
         }
       });
     }
+    return cells;
+  }
 
-    if (group.length > 0) {
-      groups.push(group);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (
+        !visited[y][x] &&
+        (grid[y][x].type.startsWith(typePrefix) ||
+          (grid[y][x].originalType &&
+            grid[y][x].originalType.startsWith(typePrefix)))
+      ) {
+        areaCount++;
+        const areaId = `${idPrefix}-${areaCount}`;
+        const cells = floodFill(x, y);
+        cells.forEach(({ x, y }) => {
+          grid[y][x].areaId = areaId;
+        });
+      }
     }
-  });
-
-  return groups;
+  }
 }

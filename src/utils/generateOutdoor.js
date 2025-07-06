@@ -3,7 +3,7 @@
 // 2. Transform rooms to organic outdoor areas
 // 3. Widen corridors to natural paths
 // 4. Apply organic growth for natural appearance
-import { addOutdoorLabels } from "./labelUtils";
+import { addOutdoorLabels, assignAreaIds } from "./labelUtils";
 
 const MIN_ROOM_SIZE = 5;
 const MAX_ROOM_SIZE = 9;
@@ -65,7 +65,10 @@ function roomCenter(room) {
 function carveHorizontalCorridor(grid, x1, x2, y) {
   const path = [];
   for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
-    if (grid[y][x].type === "outdoor_shrub") {
+    if (
+      grid[y][x].type === "outdoor_shrub" ||
+      grid[y][x].type === "outdoor_road"
+    ) {
       grid[y][x].type = "outdoor_road";
       grid[y][x].tileX = randomInt(0, 3);
       grid[y][x].tileY = randomInt(0, 3);
@@ -78,7 +81,10 @@ function carveHorizontalCorridor(grid, x1, x2, y) {
 function carveVerticalCorridor(grid, y1, y2, x) {
   const path = [];
   for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
-    if (grid[y][x].type === "outdoor_shrub") {
+    if (
+      grid[y][x].type === "outdoor_shrub" ||
+      grid[y][x].type === "outdoor_road"
+    ) {
       grid[y][x].type = "outdoor_road";
       grid[y][x].tileX = randomInt(0, 3);
       grid[y][x].tileY = randomInt(0, 3);
@@ -178,14 +184,34 @@ function transformRoomsToOutdoorAreas(grid, rooms) {
     area.cells.forEach(({ x, y }) => {
       if (grid[y] && grid[y][x]) {
         if (area.isMountain) {
-          grid[y][x].type = "outdoor_mountain";
+          if (
+            grid[y][x].type !== "outdoor_mountain" &&
+            grid[y][x].type !== "outdoor_river" &&
+            grid[y][x].type !== "outdoor_lake"
+          ) {
+            grid[y][x].type = "outdoor_mountain";
+            grid[y][x].tileX = randomInt(0, 3);
+            grid[y][x].tileY = randomInt(0, 3);
+          }
         } else if (area.isWater) {
-          grid[y][x].type = "outdoor_lake";
+          if (
+            grid[y][x].type !== "outdoor_mountain" &&
+            grid[y][x].type !== "outdoor_river"
+          ) {
+            grid[y][x].type = "outdoor_lake";
+            grid[y][x].tileX = randomInt(0, 3);
+            grid[y][x].tileY = randomInt(0, 3);
+          }
         } else {
-          grid[y][x].type = "outdoor_area";
+          if (
+            grid[y][x].type === "outdoor_shrub" ||
+            grid[y][x].type === "outdoor_road"
+          ) {
+            grid[y][x].type = "outdoor_area";
+            grid[y][x].tileX = randomInt(0, 3);
+            grid[y][x].tileY = randomInt(0, 3);
+          }
         }
-        grid[y][x].tileX = randomInt(0, 3);
-        grid[y][x].tileY = randomInt(0, 3);
       }
     });
   });
@@ -297,7 +323,7 @@ function areaCenter(area) {
   return { x: Math.round(sum.x / n), y: Math.round(sum.y / n) };
 }
 
-// Helper: Carve a river corridor between two points (can overwrite any tile except water)
+// Helper: Carve a river corridor between two points (preserves area continuity)
 function carveRiver(grid, from, to) {
   let { x: x1, y: y1 } = from;
   let { x: x2, y: y2 } = to;
@@ -309,7 +335,10 @@ function carveRiver(grid, from, to) {
       for (let dy = 0; dy < width; dy++) {
         const yy = y1 + dy;
         if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "outdoor_lake") {
+          // Store original type for area continuity
+          const originalType = grid[yy][x].type;
           grid[yy][x].type = "outdoor_river";
+          grid[yy][x].originalType = originalType;
           grid[yy][x].tileX = randomInt(0, 3);
           grid[yy][x].tileY = randomInt(0, 3);
         }
@@ -320,7 +349,10 @@ function carveRiver(grid, from, to) {
       for (let dx = 0; dx < width; dx++) {
         const xx = x2 + dx;
         if (grid[y] && grid[y][xx] && grid[y][xx].type !== "outdoor_lake") {
+          // Store original type for area continuity
+          const originalType = grid[y][xx].type;
           grid[y][xx].type = "outdoor_river";
+          grid[y][xx].originalType = originalType;
           grid[y][xx].tileX = randomInt(0, 3);
           grid[y][xx].tileY = randomInt(0, 3);
         }
@@ -333,7 +365,10 @@ function carveRiver(grid, from, to) {
       for (let dx = 0; dx < width; dx++) {
         const xx = x1 + dx;
         if (grid[y] && grid[y][xx] && grid[y][xx].type !== "outdoor_lake") {
+          // Store original type for area continuity
+          const originalType = grid[y][xx].type;
           grid[y][xx].type = "outdoor_river";
+          grid[y][xx].originalType = originalType;
           grid[y][xx].tileX = randomInt(0, 3);
           grid[y][xx].tileY = randomInt(0, 3);
         }
@@ -344,7 +379,10 @@ function carveRiver(grid, from, to) {
       for (let dy = 0; dy < width; dy++) {
         const yy = y2 + dy;
         if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "outdoor_lake") {
+          // Store original type for area continuity
+          const originalType = grid[yy][x].type;
           grid[yy][x].type = "outdoor_river";
+          grid[yy][x].originalType = originalType;
           grid[yy][x].tileX = randomInt(0, 3);
           grid[yy][x].tileY = randomInt(0, 3);
         }
@@ -397,8 +435,15 @@ export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
     carveRiver(foundation.grid, c1, c2);
   }
 
+  // Assign areaIds to all walkable tiles
+  assignAreaIds(foundation.grid, "outdoor_area", "area");
+  assignAreaIds(foundation.grid, "outdoor_road", "road");
+  assignAreaIds(foundation.grid, "outdoor_lake", "lake");
+  assignAreaIds(foundation.grid, "outdoor_mountain", "mountain");
+  assignAreaIds(foundation.grid, "outdoor_river", "river");
+
   // Add labels
-  return addOutdoorLabels(foundation.grid, foundation.rooms, waterAreas);
+  return addOutdoorLabels(foundation.grid, areas, waterAreas);
 }
 
 // Returns CSS background-position for a 4x4 tileset (32px tiles)

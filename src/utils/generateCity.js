@@ -3,7 +3,7 @@
 // 2. Divide map into uniform grid of rectangular building blocks
 // 3. Carve 2-tile wide roads between blocks
 // 4. Place buildings in 70% of blocks with doors connecting to roads
-import { addCityLabels } from "./labelUtils";
+import { addCityLabels, assignAreaIds } from "./labelUtils";
 
 const GRID_WIDTH = 60;
 const GRID_HEIGHT = 60;
@@ -61,7 +61,9 @@ function carveRoads(grid, blocks, width, height) {
     for (let roadY = y; roadY < y + ROAD_WIDTH; roadY++) {
       if (roadY >= 0 && roadY < height) {
         for (let x = 0; x < width; x++) {
-          grid[roadY][x].type = "city_road";
+          if (grid[roadY][x].type === "city_shrub") {
+            grid[roadY][x].type = "city_road";
+          }
         }
       }
     }
@@ -78,7 +80,9 @@ function carveRoads(grid, blocks, width, height) {
     for (let roadX = x; roadX < x + ROAD_WIDTH; roadX++) {
       if (roadX >= 0 && roadX < width) {
         for (let y = 0; y < height; y++) {
-          grid[y][roadX].type = "city_road";
+          if (grid[y][roadX].type === "city_shrub") {
+            grid[y][roadX].type = "city_road";
+          }
         }
       }
     }
@@ -103,10 +107,16 @@ function placeBuildings(grid, blocks) {
       const floorCells = [];
       for (let x = buildingX + 1; x < buildingX + buildingWidth - 1; x++) {
         for (let y = buildingY + 1; y < buildingY + buildingHeight - 1; y++) {
-          grid[y][x].type = "city_floor";
-          grid[y][x].tileX = randomInt(0, 3);
-          grid[y][x].tileY = randomInt(0, 3);
-          floorCells.push({ x, y });
+          if (
+            grid[y][x].type === "city_shrub" ||
+            grid[y][x].type === "city_road" ||
+            grid[y][x].type === "city_wall"
+          ) {
+            grid[y][x].type = "city_floor";
+            grid[y][x].tileX = randomInt(0, 3);
+            grid[y][x].tileY = randomInt(0, 3);
+            floorCells.push({ x, y });
+          }
         }
       }
       // Place wall tiles around the perimeter
@@ -146,7 +156,12 @@ function placeBuildings(grid, blocks) {
       else if (door.x === buildingX + buildingWidth - 1) doorSide = "right";
       // Place the door (as road)
       if (door) {
-        grid[door.y][door.x].type = "city_road";
+        if (
+          grid[door.y][door.x].type === "city_shrub" ||
+          grid[door.y][door.x].type === "city_wall"
+        ) {
+          grid[door.y][door.x].type = "city_road";
+        }
         // Carve a path from the door to the nearest road
         carvePathToRoad(grid, door, doorSide, grid[0].length, grid.length);
       }
@@ -181,22 +196,42 @@ function carvePathToRoad(grid, door, side, width, height) {
   if (side === "top") {
     for (let yy = y - 1; yy >= 0; yy--) {
       if (grid[yy][x].type === "city_road") break;
-      grid[yy][x].type = "city_road";
+      if (
+        grid[yy][x].type === "city_shrub" ||
+        grid[yy][x].type === "city_wall"
+      ) {
+        grid[yy][x].type = "city_road";
+      }
     }
   } else if (side === "bottom") {
     for (let yy = y + 1; yy < height; yy++) {
       if (grid[yy][x].type === "city_road") break;
-      grid[yy][x].type = "city_road";
+      if (
+        grid[yy][x].type === "city_shrub" ||
+        grid[yy][x].type === "city_wall"
+      ) {
+        grid[yy][x].type = "city_road";
+      }
     }
   } else if (side === "left") {
     for (let xx = x - 1; xx >= 0; xx--) {
       if (grid[y][xx].type === "city_road") break;
-      grid[y][xx].type = "city_road";
+      if (
+        grid[y][xx].type === "city_shrub" ||
+        grid[y][xx].type === "city_wall"
+      ) {
+        grid[y][xx].type = "city_road";
+      }
     }
   } else if (side === "right") {
     for (let xx = x + 1; xx < width; xx++) {
       if (grid[y][xx].type === "city_road") break;
-      grid[y][xx].type = "city_road";
+      if (
+        grid[y][xx].type === "city_shrub" ||
+        grid[y][xx].type === "city_wall"
+      ) {
+        grid[y][xx].type = "city_road";
+      }
     }
   }
 }
@@ -256,6 +291,9 @@ export function generateCity(width = GRID_WIDTH, height = GRID_HEIGHT) {
   }
   // Add organic shrub/road boundary variation
   addShrubRoadVariation(grid);
+  // Assign areaIds to all walkable tiles
+  assignAreaIds(grid, "city_floor", "building");
+  assignAreaIds(grid, "city_road", "road");
   // Add labels
   return addCityLabels(grid, placedBuildings);
 }

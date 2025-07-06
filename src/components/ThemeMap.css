@@ -148,6 +148,11 @@
   /* background-color: rgba(255, 215, 0, 0.6); */
 }
 
+.tile-highlighted {
+  filter: brightness(1.7);
+  z-index: 2;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .dungeon-container {

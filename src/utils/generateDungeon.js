@@ -1,5 +1,5 @@
 // Room and corridor-based dungeon generator for a 60x60 grid
-import { addDungeonLabels } from "./labelUtils";
+import { addDungeonLabels, assignAreaIds } from "./labelUtils";
 
 const MIN_ROOM_SIZE = 4;
 const MAX_ROOM_SIZE = 8;
@@ -54,9 +54,14 @@ function generateRooms() {
 function carveRoom(grid, room) {
   for (let y = room.y; y < room.y + room.height; y++) {
     for (let x = room.x; x < room.x + room.width; x++) {
-      grid[y][x].type = "dungeon_floor";
-      grid[y][x].tileX = randomInt(0, 3);
-      grid[y][x].tileY = randomInt(0, 3);
+      if (
+        grid[y][x].type === "dungeon_wall" ||
+        grid[y][x].type === "dungeon_corridor"
+      ) {
+        grid[y][x].type = "dungeon_floor";
+        grid[y][x].tileX = randomInt(0, 3);
+        grid[y][x].tileY = randomInt(0, 3);
+      }
     }
   }
 }
@@ -141,7 +146,10 @@ export function generateDungeon(width = GRID_WIDTH, height = GRID_HEIGHT) {
       }
     }
   }
-  // 6. Add labels
+  // 6. Assign areaIds to all walkable tiles
+  assignAreaIds(grid, "dungeon_floor", "room");
+  assignAreaIds(grid, "dungeon_corridor", "corridor");
+  // 7. Add labels
   return addDungeonLabels(grid, rooms, corridors);
 }
 

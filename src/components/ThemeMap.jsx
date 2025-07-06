@@ -18,6 +18,7 @@ const ThemeMap = ({
 }) => {
   const [dungeon, setDungeon] = useState([]);
   const [error, setError] = useState(null);
+  const [highlightedAreaId, setHighlightedAreaId] = useState(null);
 
   const generateNewMap = () => {
     try {
@@ -233,18 +234,39 @@ const ThemeMap = ({
       <div className="dungeon-grid">
         {dungeon.map((row, rowIndex) => (
           <div key={rowIndex} className="dungeon-row">
-            {row.map((tile, colIndex) => (
-              <div
-                key={`${rowIndex}-${colIndex}`}
-                className={`dungeon-tile ${tile.type}`}
-                style={getTileStyle(tile)}
-                title={`${tile.type} at (${colIndex}, ${rowIndex})`}
-                data-label={tile.label || undefined}
-                data-label-type={getLabelType(tile.type) || undefined}
-              >
-                {tile.label}
-              </div>
-            ))}
+            {row.map((tile, colIndex) => {
+              const isLabel = Boolean(tile.label);
+              const isHighlighted =
+                highlightedAreaId && tile.areaId === highlightedAreaId;
+              return (
+                <div
+                  key={`${rowIndex}-${colIndex}`}
+                  className={`dungeon-tile ${tile.type} ${
+                    isHighlighted ? "tile-highlighted" : ""
+                  }`}
+                  style={getTileStyle(tile)}
+                  title={
+                    `${tile.type} at (${colIndex}, ${rowIndex})` +
+                    (tile.label ? ` | label: ${tile.label}` : "") +
+                    (tile.areaId ? ` | areaId: ${tile.areaId}` : "")
+                  }
+                  data-label={tile.label || undefined}
+                  data-label-type={getLabelType(tile.type) || undefined}
+                  onMouseEnter={
+                    isLabel && tile.areaId
+                      ? () => setHighlightedAreaId(tile.areaId)
+                      : undefined
+                  }
+                  onMouseLeave={
+                    isLabel && tile.areaId
+                      ? () => setHighlightedAreaId(null)
+                      : undefined
+                  }
+                >
+                  {tile.label}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
