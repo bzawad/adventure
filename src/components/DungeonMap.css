@@ -92,6 +92,18 @@
   background-color: #1a1a1a;
 }
 
+.dungeon-tile.road {
+  background-color: #3a3a3a;
+}
+
+.dungeon-tile.shrub {
+  background-color: #1a3a1a;
+}
+
+.dungeon-tile.corridor {
+  background-color: #2a2a2a;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .dungeon-container {
