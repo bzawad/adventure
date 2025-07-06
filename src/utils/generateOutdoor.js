@@ -17,7 +17,11 @@ function randomInt(min, max) {
 
 function createEmptyGrid(width, height) {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type: "outdoor_shrub", tileX: 0, tileY: 0 })),
+    Array.from({ length: width }, () => ({
+      type: "outdoor_shrub",
+      tileX: 0,
+      tileY: 0,
+    })),
   );
 }
 
@@ -154,7 +158,8 @@ function transformRoomsToOutdoorAreas(grid, rooms) {
     const cells = generateOrganicArea(room);
 
     // Check if this room could be a mountain (max size of 9)
-    const isMaxSize = room.width === MAX_ROOM_SIZE && room.height === MAX_ROOM_SIZE;
+    const isMaxSize =
+      room.width === MAX_ROOM_SIZE && room.height === MAX_ROOM_SIZE;
     const isMountain = isMaxSize && !mountainPlaced && Math.random() < 0.5;
 
     if (isMountain) {
@@ -383,9 +388,9 @@ export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
       waterAreas.length === 2
         ? waterAreas
         : [
-          waterAreas[0],
-          waterAreas[1 + Math.floor(Math.random() * (waterAreas.length - 1))],
-        ];
+            waterAreas[0],
+            waterAreas[1 + Math.floor(Math.random() * (waterAreas.length - 1))],
+          ];
     const c1 = areaCenter(a1);
     const c2 = areaCenter(a2);
     carveRiver(foundation.grid, c1, c2);

@@ -10,8 +10,6 @@ import { generateCity } from "../utils/generateCity";
 import { TILE_CONFIG } from "../config/tileConfig";
 import "./ThemeMap.css";
 
-
-
 const ThemeMap = ({
   width = 60,
   height = 60,
@@ -43,7 +41,7 @@ const ThemeMap = ({
     if (!config) {
       // Fallback for unknown tile types
       return {
-        backgroundColor: 'magenta',
+        backgroundColor: "magenta",
         width: "32px",
         height: "32px",
       };
@@ -64,49 +62,72 @@ const ThemeMap = ({
   };
 
   const countFloorTiles = () => {
-    return dungeon.flat().filter((tile) =>
-      tile.type === "dungeon_floor" ||
-      tile.type === "cavern_floor" ||
-      tile.type === "outdoor_area" ||
-      tile.type === "city_floor"
-    ).length;
+    return dungeon
+      .flat()
+      .filter(
+        (tile) =>
+          tile.type === "dungeon_floor" ||
+          tile.type === "cavern_floor" ||
+          tile.type === "outdoor_area" ||
+          tile.type === "city_floor",
+      ).length;
   };
 
   const countWallTiles = () => {
-    return dungeon.flat().filter((tile) =>
-      tile.type === "dungeon_wall" ||
-      tile.type === "cavern_wall" ||
-      tile.type === "city_wall"
-    ).length;
+    return dungeon
+      .flat()
+      .filter(
+        (tile) =>
+          tile.type === "dungeon_wall" ||
+          tile.type === "cavern_wall" ||
+          tile.type === "city_wall",
+      ).length;
   };
 
   const countCorridorTiles = () => {
-    return dungeon.flat().filter((tile) =>
-      tile.type === "dungeon_corridor" ||
-      tile.type === "cavern_corridor"
-    ).length;
+    return dungeon
+      .flat()
+      .filter(
+        (tile) =>
+          tile.type === "dungeon_corridor" || tile.type === "cavern_corridor",
+      ).length;
   };
 
   const countRoadTiles = () => {
-    return dungeon.flat().filter((tile) =>
-      tile.type === "outdoor_road" ||
-      tile.type === "city_road"
-    ).length;
+    return dungeon
+      .flat()
+      .filter(
+        (tile) => tile.type === "outdoor_road" || tile.type === "city_road",
+      ).length;
   };
 
   const countShrubTiles = () => {
-    return dungeon.flat().filter((tile) =>
-      tile.type === "outdoor_shrub" ||
-      tile.type === "city_shrub"
-    ).length;
+    return dungeon
+      .flat()
+      .filter(
+        (tile) => tile.type === "outdoor_shrub" || tile.type === "city_shrub",
+      ).length;
   };
 
   const countMountainTiles = () => {
-    return dungeon.flat().filter((tile) => tile.type === "outdoor_mountain").length;
+    return dungeon.flat().filter((tile) => tile.type === "outdoor_mountain")
+      .length;
   };
 
   const countRiverTiles = () => {
-    return dungeon.flat().filter((tile) => tile.type === "outdoor_river").length;
+    return dungeon
+      .flat()
+      .filter(
+        (tile) => tile.type === "outdoor_river" || tile.type === "cavern_river",
+      ).length;
+  };
+
+  const countLakeTiles = () => {
+    return dungeon
+      .flat()
+      .filter(
+        (tile) => tile.type === "outdoor_lake" || tile.type === "cavern_lake",
+      ).length;
   };
 
   const getMapTitle = () => {
@@ -141,6 +162,14 @@ const ThemeMap = ({
               <span>Wall tiles: {countWallTiles()}</span>
               <span>Corridor tiles: {countCorridorTiles()}</span>
               <span>Mountain tiles: {countMountainTiles()}</span>
+              <span>River tiles: {countRiverTiles()}</span>
+            </>
+          ) : mapType === "cavern" ? (
+            <>
+              <span>Floor tiles: {countFloorTiles()}</span>
+              <span>Wall tiles: {countWallTiles()}</span>
+              <span>Corridor tiles: {countCorridorTiles()}</span>
+              <span>Lake tiles: {countLakeTiles()}</span>
               <span>River tiles: {countRiverTiles()}</span>
             </>
           ) : (

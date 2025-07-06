@@ -17,7 +17,11 @@ function randomInt(min, max) {
 
 function createEmptyGrid(width, height) {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type: "cavern_wall", tileX: 0, tileY: 0 })),
+    Array.from({ length: width }, () => ({
+      type: "cavern_wall",
+      tileX: 0,
+      tileY: 0,
+    })),
   );
 }
 
@@ -263,6 +267,72 @@ function applyOrganicGrowth(grid, caverns) {
   });
 }
 
+// Helper: Find center of a cavern
+function cavernCenter(cavern) {
+  const n = cavern.cells.length;
+  const sum = cavern.cells.reduce(
+    (acc, cell) => ({ x: acc.x + cell.x, y: acc.y + cell.y }),
+    { x: 0, y: 0 },
+  );
+  return { x: Math.round(sum.x / n), y: Math.round(sum.y / n) };
+}
+
+// Helper: Carve a river corridor between two points (can overwrite any tile except water)
+function carveRiver(grid, from, to) {
+  let { x: x1, y: y1 } = from;
+  let { x: x2, y: y2 } = to;
+  // L-shaped path: horizontal then vertical or vice versa (randomize)
+  if (Math.random() < 0.5) {
+    // Horizontal then vertical
+    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dy = 0; dy < width; dy++) {
+        const yy = y1 + dy;
+        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "cavern_lake") {
+          grid[yy][x].type = "cavern_river";
+          grid[yy][x].tileX = randomInt(0, 3);
+          grid[yy][x].tileY = randomInt(0, 3);
+        }
+      }
+    }
+    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dx = 0; dx < width; dx++) {
+        const xx = x2 + dx;
+        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "cavern_lake") {
+          grid[y][xx].type = "cavern_river";
+          grid[y][xx].tileX = randomInt(0, 3);
+          grid[y][xx].tileY = randomInt(0, 3);
+        }
+      }
+    }
+  } else {
+    // Vertical then horizontal
+    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dx = 0; dx < width; dx++) {
+        const xx = x1 + dx;
+        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "cavern_lake") {
+          grid[y][xx].type = "cavern_river";
+          grid[y][xx].tileX = randomInt(0, 3);
+          grid[y][xx].tileY = randomInt(0, 3);
+        }
+      }
+    }
+    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dy = 0; dy < width; dy++) {
+        const yy = y2 + dy;
+        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "cavern_lake") {
+          grid[yy][x].type = "cavern_river";
+          grid[yy][x].tileX = randomInt(0, 3);
+          grid[yy][x].tileY = randomInt(0, 3);
+        }
+      }
+    }
+  }
+}
+
 // Generate traditional dungeon foundation
 function generateTraditionalFoundation() {
   const grid = createEmptyGrid(GRID_WIDTH, GRID_HEIGHT);
@@ -279,6 +349,35 @@ export function generateCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
   const caverns = transformRoomsToCaverns(foundation.grid, foundation.rooms);
   transformCorridorsToPassages(foundation.grid, foundation.corridors);
   applyOrganicGrowth(foundation.grid, caverns);
+
+  // Add lakes to some caverns (similar to outdoor lakes)
+  const lakeCaverns = [];
+  caverns.forEach((cavern) => {
+    // 30% chance for a cavern to become a lake
+    if (Math.random() < 0.3) {
+      cavern.cells.forEach(({ x, y }) => {
+        if (foundation.grid[y] && foundation.grid[y][x]) {
+          foundation.grid[y][x].type = "cavern_lake";
+          foundation.grid[y][x].tileX = randomInt(0, 3);
+          foundation.grid[y][x].tileY = randomInt(0, 3);
+        }
+      });
+      lakeCaverns.push(cavern);
+    }
+  });
+
+  // Generate rivers between lakes (only one river per map)
+  if (lakeCaverns.length >= 2) {
+    // Randomly select two different lake caverns
+    const lake1 = lakeCaverns[Math.floor(Math.random() * lakeCaverns.length)];
+    const remainingLakes = lakeCaverns.filter((lake) => lake !== lake1);
+    const lake2 =
+      remainingLakes[Math.floor(Math.random() * remainingLakes.length)];
+
+    const center1 = cavernCenter(lake1);
+    const center2 = cavernCenter(lake2);
+    carveRiver(foundation.grid, center1, center2);
+  }
 
   // Fill in random tileX/tileY for remaining walls
   for (let y = 0; y < height; y++) {

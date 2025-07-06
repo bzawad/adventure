@@ -13,7 +13,11 @@ function randomInt(min, max) {
 
 function createEmptyGrid(width, height) {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type: "dungeon_wall", tileX: 0, tileY: 0 })),
+    Array.from({ length: width }, () => ({
+      type: "dungeon_wall",
+      tileX: 0,
+      tileY: 0,
+    })),
   );
 }
 
