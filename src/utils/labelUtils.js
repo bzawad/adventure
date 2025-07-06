@@ -383,10 +383,20 @@ function findLabelPositionForType(grid, positions, requiredType) {
   // Try the center first
   const n = positions.length;
   const center = positions[Math.floor(n / 2)];
-  if (center && grid[center.y][center.x].type === requiredType) {
+  if (
+    center &&
+    grid[center.y][center.x].type === requiredType &&
+    !grid[center.y][center.x].door
+  ) {
     return center;
   }
-  // Try all positions
+  // Try all positions, skipping doors
+  for (const pos of positions) {
+    if (grid[pos.y][pos.x].type === requiredType && !grid[pos.y][pos.x].door) {
+      return pos;
+    }
+  }
+  // If no non-door position, allow any
   for (const pos of positions) {
     if (grid[pos.y][pos.x].type === requiredType) {
       return pos;

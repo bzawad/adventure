@@ -164,6 +164,15 @@ function placeBuildings(grid, blocks) {
           grid[door.y][door.x].tileX = randomInt(0, 3);
           grid[door.y][door.x].tileY = randomInt(0, 3);
         }
+        // Add door overlay property
+        let orientation = "south";
+        if (doorSide === "top") orientation = "north";
+        else if (doorSide === "bottom") orientation = "south";
+        else if (doorSide === "left") orientation = "west";
+        else if (doorSide === "right") orientation = "east";
+        // 1 in 3 locked, never trapped
+        const locked = Math.random() < 1 / 3;
+        grid[door.y][door.x].door = { orientation, locked, trapped: false };
         // Carve a path from the door to the nearest road
         carvePathToRoad(grid, door, doorSide, grid[0].length, grid.length);
       }
