@@ -17,8 +17,8 @@ A React-based dungeon map generator that creates random 60x60 grid layouts using
 adventure/
 ├── public/
 │   └── images/tilesets/
-│       ├── light_cracked_stone.png    # Floor tileset
-│       └── dark_stone_with_vines.png  # Wall tileset
+│       ├── light_cobblestone.png    # Floor tileset
+│       └── dark_cobblestone.png  # Wall tileset
 ├── src/
 │   ├── components/
 │   │   ├── DungeonMap.jsx             # Main dungeon display component
@@ -87,8 +87,8 @@ The `generateDungeon.js` utility creates dungeons by:
 
 ### Tileset System
 
-- **Floor Tiles**: Uses `light_cracked_stone.png` (4x4 grid of 32x32 pixel tiles)
-- **Wall Tiles**: Uses `dark_stone_with_vines.png` (4x4 grid of 32x32 pixel tiles)
+- **Floor Tiles**: Uses `light_cobblestone.png` (4x4 grid of 32x32 pixel tiles)
+- **Wall Tiles**: Uses `dark_cobblestone.png` (4x4 grid of 32x32 pixel tiles)
 - **Random Selection**: Each tile randomly selects one of the 16 possible variations
 
 ### Component Architecture

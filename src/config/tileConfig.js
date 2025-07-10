@@ -5,19 +5,19 @@ export const TILE_CONFIG = {
   // Dungeon Tiles
   dungeon_floor: {
     walkable: true,
-    image: "/images/tilesets/light_cracked_stone.png",
+    image: "/images/tilesets/light_cobblestone.png",
     size: 32,
     tiles: 4,
   },
   dungeon_corridor: {
     walkable: true,
-    image: "/images/tilesets/light_cracked_stone.png",
+    image: "/images/tilesets/light_cobblestone.png",
     size: 32,
     tiles: 4,
   },
   dungeon_wall: {
     walkable: false,
-    image: "/images/tilesets/dark_stone_with_vines.png",
+    image: "/images/tilesets/dark_cobblestone.png",
     size: 32,
     tiles: 4,
   },
@@ -121,14 +121,14 @@ export const TILE_CONFIG = {
   // Label Tiles (overlay on existing tiles)
   dungeon_room_label: {
     walkable: true, // inherits from underlying tile
-    image: "/images/tilesets/light_cracked_stone.png", // match dungeon_floor
+    image: "/images/tilesets/light_cobblestone.png", // match dungeon_floor
     size: 32,
     tiles: 4,
     isLabel: true,
   },
   dungeon_corridor_label: {
     walkable: true,
-    image: "/images/tilesets/light_cracked_stone.png", // match dungeon_floor
+    image: "/images/tilesets/light_cobblestone.png", // match dungeon_floor
     size: 32,
     tiles: 4,
     isLabel: true,
@@ -191,7 +191,7 @@ export const TILE_CONFIG = {
   },
   city_road_label: {
     walkable: true,
-    image: "/images/tilesets/dark_stone_with_vines.png",
+    image: "/images/tilesets/dark_cobblestone.png",
     size: 32,
     tiles: 4,
     isLabel: true,
