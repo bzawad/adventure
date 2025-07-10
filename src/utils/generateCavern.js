@@ -360,6 +360,229 @@ function generateTraditionalFoundation() {
   return { grid, rooms, corridors };
 }
 
+// Post-generation cleanup to remove isolated single tiles and unreachable areas
+function cleanupCavernMap(grid) {
+  const height = grid.length;
+  const width = grid[0].length;
+
+  // Define walkable tile types for caverns
+  const walkableTypes = [
+    "cavern_floor",
+    "cavern_corridor",
+    "cavern_lake",
+    "cavern_river",
+  ];
+
+  // Helper function to check if a tile is walkable
+  const isWalkable = (x, y) => {
+    if (x < 0 || x >= width || y < 0 || y >= height) return false;
+    return (
+      walkableTypes.includes(grid[y][x].type) ||
+      (grid[y][x].originalType &&
+        walkableTypes.includes(grid[y][x].originalType))
+    );
+  };
+
+  // Helper function to get adjacent walkable neighbors (north, east, south, west only)
+  const getAdjacentWalkableCount = (x, y) => {
+    const directions = [
+      [0, -1], // north
+      [1, 0], // east
+      [0, 1], // south
+      [-1, 0], // west
+    ];
+    return directions.filter(([dx, dy]) => isWalkable(x + dx, y + dy)).length;
+  };
+
+  // Helper function to get adjacent tiles of same type
+  const getAdjacentSameTypeCount = (x, y, tileType) => {
+    const directions = [
+      [0, -1], // north
+      [1, 0], // east
+      [0, 1], // south
+      [-1, 0], // west
+    ];
+    return directions.filter(([dx, dy]) => {
+      const nx = x + dx,
+        ny = y + dy;
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
+      return (
+        grid[ny][nx].type === tileType ||
+        (grid[ny][nx].originalType && grid[ny][nx].originalType === tileType)
+      );
+    }).length;
+  };
+
+  // First pass: Remove isolated single tiles (no adjacent walkable tiles)
+  const tilesToRemove = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (isWalkable(x, y)) {
+        const adjacentCount = getAdjacentWalkableCount(x, y);
+        if (adjacentCount === 0) {
+          tilesToRemove.push({ x, y });
+        }
+      }
+    }
+  }
+
+  // Convert isolated tiles to walls
+  tilesToRemove.forEach(({ x, y }) => {
+    grid[y][x].type = "cavern_wall";
+    grid[y][x].tileX = randomInt(0, 3);
+    grid[y][x].tileY = randomInt(0, 3);
+    delete grid[y][x].originalType;
+  });
+
+  // Second pass: Remove single-tile areas (areas with only 1 tile)
+  const visited = Array.from({ length: height }, () =>
+    Array(width).fill(false),
+  );
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!visited[y][x] && isWalkable(x, y)) {
+        // Flood fill to find connected area
+        const area = [];
+        const stack = [{ x, y }];
+        visited[y][x] = true;
+
+        while (stack.length > 0) {
+          const current = stack.pop();
+          area.push(current);
+
+          // Check 4-directional neighbors
+          const directions = [
+            [0, -1],
+            [1, 0],
+            [0, 1],
+            [-1, 0],
+          ];
+
+          directions.forEach(([dx, dy]) => {
+            const nx = current.x + dx;
+            const ny = current.y + dy;
+
+            if (
+              nx >= 0 &&
+              nx < width &&
+              ny >= 0 &&
+              ny < height &&
+              !visited[ny][nx] &&
+              isWalkable(nx, ny)
+            ) {
+              visited[ny][nx] = true;
+              stack.push({ x: nx, y: ny });
+            }
+          });
+        }
+
+        // If area has only 1 tile, convert it to wall
+        if (area.length === 1) {
+          const { x: tileX, y: tileY } = area[0];
+          grid[tileY][tileX].type = "cavern_wall";
+          grid[tileY][tileX].tileX = randomInt(0, 3);
+          grid[tileY][tileX].tileY = randomInt(0, 3);
+          delete grid[tileY][tileX].originalType;
+        }
+      }
+    }
+  }
+
+  // Third pass: Aggressively remove single corridor tiles
+  const corridorTilesToRemove = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (
+        grid[y][x].type === "cavern_corridor" ||
+        (grid[y][x].originalType &&
+          grid[y][x].originalType === "cavern_corridor")
+      ) {
+        const adjacentCorridors = getAdjacentSameTypeCount(
+          x,
+          y,
+          "cavern_corridor",
+        );
+        // Remove single corridor tiles that have no adjacent corridors
+        if (adjacentCorridors === 0) {
+          corridorTilesToRemove.push({ x, y });
+        }
+      }
+    }
+  }
+
+  // Convert single corridor tiles to walls
+  corridorTilesToRemove.forEach(({ x, y }) => {
+    grid[y][x].type = "cavern_wall";
+    grid[y][x].tileX = randomInt(0, 3);
+    grid[y][x].tileY = randomInt(0, 3);
+    delete grid[y][x].originalType;
+  });
+
+  // Fourth pass: Remove small corridor areas (less than 3 tiles)
+  const corridorVisited = Array.from({ length: height }, () =>
+    Array(width).fill(false),
+  );
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (
+        !corridorVisited[y][x] &&
+        (grid[y][x].type === "cavern_corridor" ||
+          (grid[y][x].originalType &&
+            grid[y][x].originalType === "cavern_corridor"))
+      ) {
+        // Flood fill to find connected corridor area
+        const corridorArea = [];
+        const stack = [{ x, y }];
+        corridorVisited[y][x] = true;
+
+        while (stack.length > 0) {
+          const current = stack.pop();
+          corridorArea.push(current);
+
+          // Check 4-directional neighbors for same corridor type
+          const directions = [
+            [0, -1],
+            [1, 0],
+            [0, 1],
+            [-1, 0],
+          ];
+
+          directions.forEach(([dx, dy]) => {
+            const nx = current.x + dx;
+            const ny = current.y + dy;
+
+            if (
+              nx >= 0 &&
+              nx < width &&
+              ny >= 0 &&
+              ny < height &&
+              !corridorVisited[ny][nx] &&
+              (grid[ny][nx].type === "cavern_corridor" ||
+                (grid[ny][nx].originalType &&
+                  grid[ny][nx].originalType === "cavern_corridor"))
+            ) {
+              corridorVisited[ny][nx] = true;
+              stack.push({ x: nx, y: ny });
+            }
+          });
+        }
+
+        // If corridor area has less than 3 tiles, convert to walls
+        if (corridorArea.length < 3) {
+          corridorArea.forEach(({ x: tileX, y: tileY }) => {
+            grid[tileY][tileX].type = "cavern_wall";
+            grid[tileY][tileX].tileX = randomInt(0, 3);
+            grid[tileY][tileX].tileY = randomInt(0, 3);
+            delete grid[tileY][tileX].originalType;
+          });
+        }
+      }
+    }
+  }
+}
+
 // Main cavern generation function
 export function generateCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // Use hybrid approach for reliable connectivity
@@ -406,6 +629,9 @@ export function generateCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
       }
     }
   }
+
+  // Cleanup isolated tiles and unreachable areas
+  cleanupCavernMap(foundation.grid);
 
   // Assign areaIds to all walkable tiles
   assignAreaIds(foundation.grid, "cavern_floor", "chamber");
