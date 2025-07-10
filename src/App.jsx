@@ -3,7 +3,7 @@ import ThemeMap from "./components/ThemeMap.jsx";
 import "./App.css";
 
 export default function App() {
-  const [mapType, setMapType] = useState("dungeon"); // "dungeon", "cavern", "outdoor", "outdoor_hex", or "city"
+  const [mapType, setMapType] = useState("dungeon"); // "dungeon", "cavern", "outdoor", "outdoor_hex", "cavern_hex", or "city"
 
   return (
     <div className="App">
@@ -12,31 +12,37 @@ export default function App() {
           className={`type-button ${mapType === "dungeon" ? "active" : ""}`}
           onClick={() => setMapType("dungeon")}
         >
-          Dungeon Generator
+          Dungeon
         </button>
         <button
           className={`type-button ${mapType === "cavern" ? "active" : ""}`}
           onClick={() => setMapType("cavern")}
         >
-          Cavern Generator
+          Cavern
         </button>
         <button
           className={`type-button ${mapType === "outdoor" ? "active" : ""}`}
           onClick={() => setMapType("outdoor")}
         >
-          Outdoor Generator
+          Outdoor
         </button>
         <button
           className={`type-button ${mapType === "outdoor_hex" ? "active" : ""}`}
           onClick={() => setMapType("outdoor_hex")}
         >
-          Outdoor Hex Generator
+          Outdoor Hex
+        </button>
+        <button
+          className={`type-button ${mapType === "cavern_hex" ? "active" : ""}`}
+          onClick={() => setMapType("cavern_hex")}
+        >
+          Cavern Hex
         </button>
         <button
           className={`type-button ${mapType === "city" ? "active" : ""}`}
           onClick={() => setMapType("city")}
         >
-          City Generator
+          City
         </button>
       </div>
       <ThemeMap mapType={mapType} />

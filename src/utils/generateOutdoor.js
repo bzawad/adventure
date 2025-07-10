@@ -3,7 +3,7 @@
 // 2. Transform rooms to organic outdoor areas
 // 3. Widen corridors to natural paths
 // 4. Apply organic growth for natural appearance
-import { addOutdoorLabels, assignAreaIds } from "./labelUtils";
+import { addOutdoorLabels, assignAreaIds, addCavernLabels } from "./labelUtils";
 
 const MIN_ROOM_SIZE = 5;
 const MAX_ROOM_SIZE = 9;
@@ -1043,7 +1043,7 @@ function applyHexOrganicGrowth(grid, areas) {
 }
 
 // Hex-based river carving
-function carveHexRiver(grid, from, to) {
+function carveHexRiver(grid, from, to, riverType = "outdoor_river", lakeType = "outdoor_lake") {
   let { x: x1, y: y1 } = from;
   let { x: x2, y: y2 } = to;
 
@@ -1054,10 +1054,9 @@ function carveHexRiver(grid, from, to) {
       const width = Math.random() < 0.5 ? 1 : 2;
       for (let dy = 0; dy < width; dy++) {
         const yy = y1 + dy;
-        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "outdoor_lake") {
-          // Store original type for area continuity
+        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== lakeType) {
           const originalType = grid[yy][x].type;
-          grid[yy][x].type = "outdoor_river";
+          grid[yy][x].type = riverType;
           grid[yy][x].originalType = originalType;
           grid[yy][x].tileX = randomInt(0, 3);
           grid[yy][x].tileY = randomInt(0, 3);
@@ -1068,10 +1067,9 @@ function carveHexRiver(grid, from, to) {
       const width = Math.random() < 0.5 ? 1 : 2;
       for (let dx = 0; dx < width; dx++) {
         const xx = x2 + dx;
-        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "outdoor_lake") {
-          // Store original type for area continuity
+        if (grid[y] && grid[y][xx] && grid[y][xx].type !== lakeType) {
           const originalType = grid[y][xx].type;
-          grid[y][xx].type = "outdoor_river";
+          grid[y][xx].type = riverType;
           grid[y][xx].originalType = originalType;
           grid[y][xx].tileX = randomInt(0, 3);
           grid[y][xx].tileY = randomInt(0, 3);
@@ -1084,10 +1082,9 @@ function carveHexRiver(grid, from, to) {
       const width = Math.random() < 0.5 ? 1 : 2;
       for (let dx = 0; dx < width; dx++) {
         const xx = x1 + dx;
-        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "outdoor_lake") {
-          // Store original type for area continuity
+        if (grid[y] && grid[y][xx] && grid[y][xx].type !== lakeType) {
           const originalType = grid[y][xx].type;
-          grid[y][xx].type = "outdoor_river";
+          grid[y][xx].type = riverType;
           grid[y][xx].originalType = originalType;
           grid[y][xx].tileX = randomInt(0, 3);
           grid[y][xx].tileY = randomInt(0, 3);
@@ -1098,10 +1095,9 @@ function carveHexRiver(grid, from, to) {
       const width = Math.random() < 0.5 ? 1 : 2;
       for (let dy = 0; dy < width; dy++) {
         const yy = y2 + dy;
-        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "outdoor_lake") {
-          // Store original type for area continuity
+        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== lakeType) {
           const originalType = grid[yy][x].type;
-          grid[yy][x].type = "outdoor_river";
+          grid[yy][x].type = riverType;
           grid[yy][x].originalType = originalType;
           grid[yy][x].tileX = randomInt(0, 3);
           grid[yy][x].tileY = randomInt(0, 3);
@@ -1182,73 +1178,69 @@ function generateHexTraditionalFoundation() {
 
 // Main hex outdoor generation function
 export function generateHexOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
-  // Use hybrid approach for reliable connectivity
-  const foundation = generateHexTraditionalFoundation();
-  const areas = transformHexRoomsToOutdoorAreas(
-    foundation.grid,
-    foundation.rooms,
-  );
-  transformHexCorridorsToPaths(foundation.grid, foundation.corridors);
-  applyHexOrganicGrowth(foundation.grid, areas);
-
-  // Fill in random tileX/tileY for remaining walls
+  const grid = createHexEmptyGrid(width, height);
+  const rooms = generateHexRooms();
+  const corridors = connectHexRooms(grid, rooms);
+  const areas = transformHexRoomsToOutdoorAreas(grid, rooms);
+  transformHexCorridorsToPaths(grid, corridors);
+  applyHexOrganicGrowth(grid, areas);
+  
+  // Generate radiation zone (only for outdoor maps)
+  const radiationZone = generateHexRadiationZone(grid, areas);
+  
+  // Add lakes to some areas (similar to square outdoor)
+  const lakeAreas = [];
+  areas.forEach((area) => {
+    // 30% chance for an area to become a lake
+    if (Math.random() < 0.3) {
+      area.cells.forEach(({ x, y }) => {
+        if (grid[y] && grid[y][x]) {
+          grid[y][x].type = "outdoor_lake";
+          grid[y][x].tileX = randomInt(0, 3);
+          grid[y][x].tileY = randomInt(0, 3);
+        }
+      });
+      lakeAreas.push(area);
+    }
+  });
+  
+  // Generate rivers between lakes (only one river per map)
+  if (lakeAreas.length >= 2) {
+    // Randomly select two different lake areas
+    const lake1 = lakeAreas[Math.floor(Math.random() * lakeAreas.length)];
+    const remainingLakes = lakeAreas.filter((lake) => lake !== lake1);
+    const lake2 = remainingLakes[Math.floor(Math.random() * remainingLakes.length)];
+    const center1 = areaCenter(lake1);
+    const center2 = areaCenter(lake2);
+    carveHexRiver(grid, center1, center2, "outdoor_river", "outdoor_lake");
+  }
+  
+  // Fill in random tileX/tileY for remaining shrubs
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (foundation.grid[y][x].type === "outdoor_shrub") {
-        foundation.grid[y][x].tileX = randomInt(0, 3);
-        foundation.grid[y][x].tileY = randomInt(0, 3);
+      if (grid[y][x].type === "outdoor_shrub") {
+        grid[y][x].tileX = randomInt(0, 3);
+        grid[y][x].tileY = randomInt(0, 3);
       }
     }
   }
-
-  // Add rivers based on map features
-  const waterAreas = areas.filter((a) => a.isWater);
-  const mountainAreas = areas.filter((a) => a.isMountain);
-
-  // If there's both a mountain and a lake, create a river from mountain to lake
-  if (mountainAreas.length > 0 && waterAreas.length > 0) {
-    const mountainArea = mountainAreas[0]; // Take the first mountain
-    const waterArea = waterAreas[Math.floor(Math.random() * waterAreas.length)]; // Pick a random lake
-    const mountainCenter = areaCenter(mountainArea);
-    const waterCenter = areaCenter(waterArea);
-    carveHexRiver(foundation.grid, mountainCenter, waterCenter);
-  }
-
-  // Add a river between water areas if there are 2+ water areas
-  if (waterAreas.length >= 2) {
-    // Pick two water areas (randomly)
-    const [a1, a2] =
-      waterAreas.length === 2
-        ? waterAreas
-        : [
-            waterAreas[0],
-            waterAreas[1 + Math.floor(Math.random() * (waterAreas.length - 1))],
-          ];
-    const c1 = areaCenter(a1);
-    const c2 = areaCenter(a2);
-    carveHexRiver(foundation.grid, c1, c2);
-  }
-
-  // Generate radiation zone
-  const radiationZone = generateHexRadiationZone(foundation.grid, areas);
-
-  // Cleanup isolated tiles and unreachable areas
-  cleanupOutdoorMap(foundation.grid);
-
+  
+  // Cleanup isolated tiles and unreachable areas (hex version)
+  cleanupOutdoorMap(grid);
+  
   // Assign areaIds to all walkable tiles
-  assignAreaIds(foundation.grid, "outdoor_area", "area");
-  assignAreaIds(foundation.grid, "outdoor_road", "road");
-  assignAreaIds(foundation.grid, "outdoor_lake", "lake");
-  assignAreaIds(foundation.grid, "outdoor_mountain", "mountain");
-  assignAreaIds(foundation.grid, "outdoor_river", "river");
-
+  assignAreaIds(grid, "outdoor_area", "area");
+  assignAreaIds(grid, "outdoor_road", "road");
+  assignAreaIds(grid, "outdoor_lake", "lake");
+  assignAreaIds(grid, "outdoor_river", "river");
+  
   // Add labels
-  const result = addOutdoorLabels(foundation.grid, areas, waterAreas);
-
+  const result = addOutdoorLabels(grid, areas, lakeAreas);
+  
   // Add radiation zone info to the result
   if (radiationZone) {
     result.radiationZone = radiationZone;
   }
-
+  
   return result;
 }
