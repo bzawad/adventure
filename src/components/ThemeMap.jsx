@@ -5,7 +5,7 @@ import {
   getTileBackgroundPosition,
 } from "../utils/generateDungeon";
 import { generateCavern } from "../utils/generateCavern";
-import { generateOutdoor } from "../utils/generateOutdoor";
+import { generateOutdoor, generateHexOutdoor } from "../utils/generateOutdoor";
 import { generateCity } from "../utils/generateCity";
 import { TILE_CONFIG } from "../config/tileConfig";
 import "./ThemeMap.css";
@@ -30,6 +30,8 @@ const ThemeMap = ({
         newMap = generateCavern(width, height, minFloorTiles);
       } else if (mapType === "outdoor") {
         newMap = generateOutdoor(width, height);
+      } else if (mapType === "outdoor_hex") {
+        newMap = generateHexOutdoor(width, height);
       } else if (mapType === "city") {
         newMap = generateCity(width, height);
       } else {
@@ -181,6 +183,7 @@ const ThemeMap = ({
   const getMapTitle = () => {
     if (mapType === "cavern") return "Cavern Map Generator";
     if (mapType === "outdoor") return "Outdoor Map Generator";
+    if (mapType === "outdoor_hex") return "Outdoor Hex Map Generator";
     if (mapType === "city") return "City Map Generator";
     return "Dungeon Map Generator";
   };
@@ -188,6 +191,7 @@ const ThemeMap = ({
   const getGenerateButtonText = () => {
     if (mapType === "cavern") return "Generate New Cavern";
     if (mapType === "outdoor") return "Generate New Outdoor";
+    if (mapType === "outdoor_hex") return "Generate New Outdoor Hex";
     if (mapType === "city") return "Generate New City";
     return "Generate New Dungeon";
   };
@@ -275,7 +279,7 @@ const ThemeMap = ({
               <span>Road tiles: {countRoadTiles()}</span>
               <span>Shrub tiles: {countShrubTiles()}</span>
             </>
-          ) : mapType === "outdoor" ? (
+          ) : mapType === "outdoor" || mapType === "outdoor_hex" ? (
             <>
               <span>Floor tiles: {countFloorTiles()}</span>
               <span>Wall tiles: {countWallTiles()}</span>
@@ -305,9 +309,9 @@ const ThemeMap = ({
         </button>
       </div>
 
-      <div className="dungeon-grid">
+      <div className={mapType === "outdoor_hex" ? "dungeon-grid hex-grid" : "dungeon-grid"}>
         {dungeon.map((row, rowIndex) => (
-          <div key={rowIndex} className="dungeon-row">
+          <div key={rowIndex} className={mapType === "outdoor_hex" ? "dungeon-row hex-row" : "dungeon-row"}>
             {row.map((tile, colIndex) => {
               const isLabel = Boolean(tile.label);
               const isHighlighted =
@@ -315,7 +319,7 @@ const ThemeMap = ({
               return (
                 <div
                   key={`${rowIndex}-${colIndex}`}
-                  className={`dungeon-tile ${tile.type} ${
+                  className={`${mapType === "outdoor_hex" ? "dungeon-tile hex-tile" : "dungeon-tile"} ${tile.type} ${
                     isHighlighted ? "tile-highlighted" : ""
                   }`}
                   style={getTileStyle(tile)}
@@ -445,7 +449,7 @@ ThemeMap.propTypes = {
   width: PropTypes.number,
   height: PropTypes.number,
   minFloorTiles: PropTypes.number,
-  mapType: PropTypes.oneOf(["dungeon", "cavern", "outdoor", "city"]),
+  mapType: PropTypes.oneOf(["dungeon", "cavern", "outdoor", "outdoor_hex", "city"]),
 };
 
 export default ThemeMap;

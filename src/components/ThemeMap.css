@@ -198,3 +198,44 @@
     /* 3x3 tiles * 24px each */
   }
 }
+
+/* Hex tile styling for outdoor hex generator */
+.hex-tile {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  width: 32px;
+  height: 32px;
+  position: relative;
+  background-size: 37px 37px;
+  background-position: center;
+}
+
+.hex-tile:hover {
+  transform: scale(1.05);
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+/* Hex grid layout adjustments */
+.hex-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: #000;
+  /* Removed transform: scaleX(0.866); */
+}
+
+.hex-row {
+  display: flex;
+  margin-bottom: -8px; /* 32px - 24px = 8px overlap vertically */
+}
+
+.hex-row:nth-child(even) {
+  margin-left: 16px;
+}
+
+.hex-row .hex-tile {
+  margin-left: 0;
+}
+.hex-row .hex-tile:first-child {
+  margin-left: 0;
+}

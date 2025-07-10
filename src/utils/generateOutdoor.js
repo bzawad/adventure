@@ -519,3 +519,525 @@ export function getTileBackgroundPosition(tileX, tileY) {
   const size = 32; // each tile is 32x32px
   return `${-tileX * size}px ${-tileY * size}px`;
 }
+
+// ===== HEX-BASED OUTDOOR GENERATOR =====
+
+// Hex grid utilities for odd-q vertical offset layout
+function hexToPixel(q, r, size = 32) {
+  const x = size * (Math.sqrt(3) * q + Math.sqrt(3) / 2 * r);
+  const y = size * (3 / 2 * r);
+  return { x, y };
+}
+
+function pixelToHex(x, y, size = 32) {
+  const q = (Math.sqrt(3) / 3 * x - 1 / 3 * y) / size;
+  const r = (2 / 3 * y) / size;
+  return hexRound(q, r);
+}
+
+function hexRound(q, r) {
+  let s = -q - r;
+  let qi = Math.round(q);
+  let ri = Math.round(r);
+  let si = Math.round(s);
+  
+  const qDiff = Math.abs(qi - q);
+  const rDiff = Math.abs(ri - r);
+  const sDiff = Math.abs(si - s);
+  
+  if (qDiff > rDiff && qDiff > sDiff) {
+    qi = -ri - si;
+  } else if (rDiff > sDiff) {
+    ri = -qi - si;
+  }
+  
+  return { q: qi, r: ri };
+}
+
+function hexDistance(a, b) {
+  return (Math.abs(a.q - b.q) + Math.abs(a.q + a.r - b.q - b.r) + Math.abs(a.r - b.r)) / 2;
+}
+
+function hexNeighbors(hex) {
+  const directions = [
+    { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
+    { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
+  ];
+  return directions.map(dir => ({ q: hex.q + dir.q, r: hex.r + dir.r }));
+}
+
+// Convert between hex and grid coordinates for display
+function hexToGridCoords(q, r) {
+  const x = q;
+  const y = r + (q - (q & 1)) / 2;
+  return { x, y };
+}
+
+function gridToHexCoords(x, y) {
+  const q = x;
+  const r = y - (x - (x & 1)) / 2;
+  return { q, r };
+}
+
+// Hex-based grid creation
+function createHexEmptyGrid(width, height) {
+  return Array.from({ length: height }, () =>
+    Array.from({ length: width }, () => ({
+      type: "outdoor_shrub",
+      tileX: 0,
+      tileY: 0,
+    })),
+  );
+}
+
+// Hex-based room generation
+function generateHexRooms() {
+  const rooms = [];
+  let attempts = 0;
+  while (rooms.length < MAX_ROOMS && attempts < MAX_ATTEMPTS) {
+    const width = randomInt(MIN_ROOM_SIZE, MAX_ROOM_SIZE);
+    const height = randomInt(MIN_ROOM_SIZE, MAX_ROOM_SIZE);
+    const x = randomInt(1, GRID_WIDTH - width - 2);
+    const y = randomInt(1, GRID_HEIGHT - height - 2);
+    const newRoom = { x, y, width, height };
+    if (!roomOverlaps(newRoom, rooms)) {
+      rooms.push(newRoom);
+    }
+    attempts++;
+  }
+  return rooms;
+}
+
+// Hex-based organic area generation
+function generateHexOrganicArea(room) {
+  const cells = [];
+  // Base cells from the room
+  for (let y = room.y; y < room.y + room.height; y++) {
+    for (let x = room.x; x < room.x + room.width; x++) {
+      cells.push({ x, y });
+    }
+  }
+  
+  // Add organic expansion using hex neighbors
+  const expandedCells = [...cells];
+  cells.forEach(({ x, y }) => {
+    const hex = gridToHexCoords(x, y);
+    const neighbors = hexNeighbors(hex);
+    
+    neighbors.forEach(neighbor => {
+      const gridPos = hexToGridCoords(neighbor.q, neighbor.r);
+      if (
+        Math.random() < 0.4 &&
+        gridPos.x >= 0 &&
+        gridPos.x < GRID_WIDTH &&
+        gridPos.y >= 0 &&
+        gridPos.y < GRID_HEIGHT
+      ) {
+        expandedCells.push(gridPos);
+      }
+    });
+  });
+  
+  // Remove duplicates
+  return expandedCells.filter(
+    (cell, index, self) =>
+      index === self.findIndex((c) => c.x === cell.x && c.y === cell.y),
+  );
+}
+
+// Hex-based corridor carving
+function carveHexHorizontalCorridor(grid, x1, x2, y) {
+  const path = [];
+  for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+    if (
+      grid[y][x].type === "outdoor_shrub" ||
+      grid[y][x].type === "outdoor_road"
+    ) {
+      grid[y][x].type = "outdoor_road";
+      grid[y][x].tileX = randomInt(0, 3);
+      grid[y][x].tileY = randomInt(0, 3);
+    }
+    path.push({ x, y });
+  }
+  return path;
+}
+
+function carveHexVerticalCorridor(grid, y1, y2, x) {
+  const path = [];
+  for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+    if (
+      grid[y][x].type === "outdoor_shrub" ||
+      grid[y][x].type === "outdoor_road"
+    ) {
+      grid[y][x].type = "outdoor_road";
+      grid[y][x].tileX = randomInt(0, 3);
+      grid[y][x].tileY = randomInt(0, 3);
+    }
+    path.push({ x, y });
+  }
+  return path;
+}
+
+function createHexCorridor(grid, from, to) {
+  let path = [];
+  if (Math.random() < 0.5) {
+    path = path.concat(carveHexHorizontalCorridor(grid, from.x, to.x, from.y));
+    path = path.concat(carveHexVerticalCorridor(grid, from.y, to.y, to.x));
+  } else {
+    path = path.concat(carveHexVerticalCorridor(grid, from.y, to.y, from.x));
+    path = path.concat(carveHexHorizontalCorridor(grid, from.x, to.x, to.y));
+  }
+  return path;
+}
+
+function connectHexRooms(grid, rooms) {
+  if (rooms.length < 2) return [];
+  const corridors = [];
+  // Connect each room to the next, and the last to the first (loop)
+  for (let i = 0; i < rooms.length; i++) {
+    const curr = roomCenter(rooms[i]);
+    const next = roomCenter(rooms[(i + 1) % rooms.length]);
+    const path = createHexCorridor(grid, curr, next);
+    corridors.push({ number: `C${i + 1}`, path });
+  }
+  return corridors;
+}
+
+// Hex-based room transformation
+function transformHexRoomsToOutdoorAreas(grid, rooms) {
+  let mountainPlaced = false;
+
+  const areas = rooms.map((room, index) => {
+    const cells = generateHexOrganicArea(room);
+
+    // Check if this room could be a mountain (max size of 9)
+    const isMaxSize =
+      room.width === MAX_ROOM_SIZE && room.height === MAX_ROOM_SIZE;
+    const isMountain = isMaxSize && !mountainPlaced && Math.random() < 0.5;
+
+    if (isMountain) {
+      mountainPlaced = true;
+    }
+
+    // 1 in 8 chance this area is water (but not if it's a mountain)
+    const isWater = !isMountain && Math.random() < 0.125;
+
+    return { cells, number: `A${index + 1}`, isWater, isMountain };
+  });
+
+  // Enhance grid with organic shapes
+  areas.forEach((area) => {
+    area.cells.forEach(({ x, y }) => {
+      if (grid[y] && grid[y][x]) {
+        if (area.isMountain) {
+          if (
+            grid[y][x].type !== "outdoor_mountain" &&
+            grid[y][x].type !== "outdoor_river" &&
+            grid[y][x].type !== "outdoor_lake"
+          ) {
+            grid[y][x].type = "outdoor_mountain";
+            grid[y][x].tileX = randomInt(0, 3);
+            grid[y][x].tileY = randomInt(0, 3);
+          }
+        } else if (area.isWater) {
+          if (
+            grid[y][x].type !== "outdoor_mountain" &&
+            grid[y][x].type !== "outdoor_river"
+          ) {
+            grid[y][x].type = "outdoor_lake";
+            grid[y][x].tileX = randomInt(0, 3);
+            grid[y][x].tileY = randomInt(0, 3);
+          }
+        } else {
+          if (
+            grid[y][x].type === "outdoor_shrub" ||
+            grid[y][x].type === "outdoor_road"
+          ) {
+            grid[y][x].type = "outdoor_area";
+            grid[y][x].tileX = randomInt(0, 3);
+            grid[y][x].tileY = randomInt(0, 3);
+          }
+        }
+      }
+    });
+  });
+  return areas;
+}
+
+// Hex-based corridor transformation
+function transformHexCorridorsToPaths(grid, corridors) {
+  corridors.forEach((corridor) => {
+    corridor.path.forEach(({ x, y }) => {
+      if (grid[y] && grid[y][x]) {
+        // Add adjacent cells using hex neighbors
+        const hex = gridToHexCoords(x, y);
+        const neighbors = hexNeighbors(hex);
+        
+        neighbors.forEach(neighbor => {
+          const gridPos = hexToGridCoords(neighbor.q, neighbor.r);
+          if (
+            gridPos.x > 0 &&
+            gridPos.x < GRID_WIDTH - 1 &&
+            gridPos.y > 0 &&
+            gridPos.y < GRID_HEIGHT - 1 &&
+            Math.random() < 0.5
+          ) {
+            if (
+              grid[gridPos.y] &&
+              grid[gridPos.y][gridPos.x] &&
+              grid[gridPos.y][gridPos.x].type === "outdoor_shrub"
+            ) {
+              grid[gridPos.y][gridPos.x].type = "outdoor_road";
+              grid[gridPos.y][gridPos.x].tileX = randomInt(0, 3);
+              grid[gridPos.y][gridPos.x].tileY = randomInt(0, 3);
+            }
+          }
+        });
+      }
+    });
+  });
+}
+
+// Hex-based organic growth
+function applyHexOrganicGrowth(grid, areas) {
+  areas.forEach((area) => {
+    // Apply organic blob growth around area cells
+    const seedCount = Math.min(3, Math.floor(area.cells.length / 8));
+    const seeds = area.cells
+      .sort(() => Math.random() - 0.5)
+      .slice(0, seedCount);
+    
+    // Grow blobs from seed points using hex neighbors
+    for (let iteration = 0; iteration < 2; iteration++) {
+      seeds.forEach(({ x, y }) => {
+        const hex = gridToHexCoords(x, y);
+        const neighbors = hexNeighbors(hex);
+        
+        // Randomly select 4 directions
+        const randomNeighbors = neighbors
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 4);
+          
+        randomNeighbors.forEach(neighbor => {
+          const gridPos = hexToGridCoords(neighbor.q, neighbor.r);
+          if (
+            gridPos.x > 0 &&
+            gridPos.x < GRID_WIDTH - 1 &&
+            gridPos.y > 0 &&
+            gridPos.y < GRID_HEIGHT - 1 &&
+            Math.random() < 0.6
+          ) {
+            if (
+              grid[gridPos.y] &&
+              grid[gridPos.y][gridPos.x] &&
+              grid[gridPos.y][gridPos.x].type === "outdoor_shrub"
+            ) {
+              grid[gridPos.y][gridPos.x].type = "outdoor_area";
+              grid[gridPos.y][gridPos.x].tileX = randomInt(0, 3);
+              grid[gridPos.y][gridPos.x].tileY = randomInt(0, 3);
+            }
+          }
+        });
+      });
+    }
+  });
+}
+
+// Hex-based river carving
+function carveHexRiver(grid, from, to) {
+  let { x: x1, y: y1 } = from;
+  let { x: x2, y: y2 } = to;
+  
+  // L-shaped path: horizontal then vertical or vice versa (randomize)
+  if (Math.random() < 0.5) {
+    // Horizontal then vertical
+    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dy = 0; dy < width; dy++) {
+        const yy = y1 + dy;
+        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "outdoor_lake") {
+          // Store original type for area continuity
+          const originalType = grid[yy][x].type;
+          grid[yy][x].type = "outdoor_river";
+          grid[yy][x].originalType = originalType;
+          grid[yy][x].tileX = randomInt(0, 3);
+          grid[yy][x].tileY = randomInt(0, 3);
+        }
+      }
+    }
+    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dx = 0; dx < width; dx++) {
+        const xx = x2 + dx;
+        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "outdoor_lake") {
+          // Store original type for area continuity
+          const originalType = grid[y][xx].type;
+          grid[y][xx].type = "outdoor_river";
+          grid[y][xx].originalType = originalType;
+          grid[y][xx].tileX = randomInt(0, 3);
+          grid[y][xx].tileY = randomInt(0, 3);
+        }
+      }
+    }
+  } else {
+    // Vertical then horizontal
+    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dx = 0; dx < width; dx++) {
+        const xx = x1 + dx;
+        if (grid[y] && grid[y][xx] && grid[y][xx].type !== "outdoor_lake") {
+          // Store original type for area continuity
+          const originalType = grid[y][xx].type;
+          grid[y][xx].type = "outdoor_river";
+          grid[y][xx].originalType = originalType;
+          grid[y][xx].tileX = randomInt(0, 3);
+          grid[y][xx].tileY = randomInt(0, 3);
+        }
+      }
+    }
+    for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+      const width = Math.random() < 0.5 ? 1 : 2;
+      for (let dy = 0; dy < width; dy++) {
+        const yy = y2 + dy;
+        if (grid[yy] && grid[yy][x] && grid[yy][x].type !== "outdoor_lake") {
+          // Store original type for area continuity
+          const originalType = grid[yy][x].type;
+          grid[yy][x].type = "outdoor_river";
+          grid[yy][x].originalType = originalType;
+          grid[yy][x].tileX = randomInt(0, 3);
+          grid[yy][x].tileY = randomInt(0, 3);
+        }
+      }
+    }
+  }
+}
+
+// Hex-based radiation zone generation
+function generateHexRadiationZone(grid, areas) {
+  // Find a random area to place the radiation center
+  const validAreas = areas.filter(area => 
+    area.cells.length > 0 && 
+    !area.isWater && 
+    !area.isMountain
+  );
+  
+  if (validAreas.length === 0) {
+    return null; // No valid areas for radiation
+  }
+  
+  // Pick a random area
+  const targetArea = validAreas[Math.floor(Math.random() * validAreas.length)];
+  
+  // Find center of the target area
+  const areaCenter = targetArea.cells.reduce(
+    (acc, cell) => ({ x: acc.x + cell.x, y: acc.y + cell.y }),
+    { x: 0, y: 0 }
+  );
+  areaCenter.x = Math.round(areaCenter.x / targetArea.cells.length);
+  areaCenter.y = Math.round(areaCenter.y / targetArea.cells.length);
+  
+  // Add some randomness to the center position within the area
+  const centerX = areaCenter.x + randomInt(-2, 2);
+  const centerY = areaCenter.y + randomInt(-2, 2);
+  
+  const radius = 8;
+  const radiationCells = [];
+  
+  // Generate circular radiation zone using hex distance
+  for (let y = Math.max(0, centerY - radius); y <= Math.min(GRID_HEIGHT - 1, centerY + radius); y++) {
+    for (let x = Math.max(0, centerX - radius); x <= Math.min(GRID_WIDTH - 1, centerX + radius); x++) {
+      const centerHex = gridToHexCoords(centerX, centerY);
+      const currentHex = gridToHexCoords(x, y);
+      const distance = hexDistance(centerHex, currentHex);
+      
+      if (distance <= radius) {
+        // Mark tile as radioactive
+        if (grid[y] && grid[y][x]) {
+          grid[y][x].radioactive = true;
+          radiationCells.push({ x, y });
+        }
+      }
+    }
+  }
+  
+  return {
+    center: { x: centerX, y: centerY },
+    radius: radius,
+    cells: radiationCells
+  };
+}
+
+// Hex-based traditional foundation
+function generateHexTraditionalFoundation() {
+  const grid = createHexEmptyGrid(GRID_WIDTH, GRID_HEIGHT);
+  const rooms = generateHexRooms();
+  const corridors = connectHexRooms(grid, rooms);
+  return { grid, rooms, corridors };
+}
+
+// Main hex outdoor generation function
+export function generateHexOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
+  // Use hybrid approach for reliable connectivity
+  const foundation = generateHexTraditionalFoundation();
+  const areas = transformHexRoomsToOutdoorAreas(foundation.grid, foundation.rooms);
+  transformHexCorridorsToPaths(foundation.grid, foundation.corridors);
+  applyHexOrganicGrowth(foundation.grid, areas);
+  
+  // Fill in random tileX/tileY for remaining walls
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (foundation.grid[y][x].type === "outdoor_shrub") {
+        foundation.grid[y][x].tileX = randomInt(0, 3);
+        foundation.grid[y][x].tileY = randomInt(0, 3);
+      }
+    }
+  }
+  
+  // Add rivers based on map features
+  const waterAreas = areas.filter((a) => a.isWater);
+  const mountainAreas = areas.filter((a) => a.isMountain);
+
+  // If there's both a mountain and a lake, create a river from mountain to lake
+  if (mountainAreas.length > 0 && waterAreas.length > 0) {
+    const mountainArea = mountainAreas[0]; // Take the first mountain
+    const waterArea = waterAreas[Math.floor(Math.random() * waterAreas.length)]; // Pick a random lake
+    const mountainCenter = areaCenter(mountainArea);
+    const waterCenter = areaCenter(waterArea);
+    carveHexRiver(foundation.grid, mountainCenter, waterCenter);
+  }
+
+  // Add a river between water areas if there are 2+ water areas
+  if (waterAreas.length >= 2) {
+    // Pick two water areas (randomly)
+    const [a1, a2] =
+      waterAreas.length === 2
+        ? waterAreas
+        : [
+            waterAreas[0],
+            waterAreas[1 + Math.floor(Math.random() * (waterAreas.length - 1))],
+          ];
+    const c1 = areaCenter(a1);
+    const c2 = areaCenter(a2);
+    carveHexRiver(foundation.grid, c1, c2);
+  }
+
+  // Generate radiation zone
+  const radiationZone = generateHexRadiationZone(foundation.grid, areas);
+
+  // Assign areaIds to all walkable tiles
+  assignAreaIds(foundation.grid, "outdoor_area", "area");
+  assignAreaIds(foundation.grid, "outdoor_road", "road");
+  assignAreaIds(foundation.grid, "outdoor_lake", "lake");
+  assignAreaIds(foundation.grid, "outdoor_mountain", "mountain");
+  assignAreaIds(foundation.grid, "outdoor_river", "river");
+
+  // Add labels
+  const result = addOutdoorLabels(foundation.grid, areas, waterAreas);
+  
+  // Add radiation zone info to the result
+  if (radiationZone) {
+    result.radiationZone = radiationZone;
+  }
+  
+  return result;
+}

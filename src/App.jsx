@@ -3,7 +3,7 @@ import ThemeMap from "./components/ThemeMap.jsx";
 import "./App.css";
 
 export default function App() {
-  const [mapType, setMapType] = useState("dungeon"); // "dungeon", "cavern", "outdoor", or "city"
+  const [mapType, setMapType] = useState("dungeon"); // "dungeon", "cavern", "outdoor", "outdoor_hex", or "city"
 
   return (
     <div className="App">
@@ -25,6 +25,12 @@ export default function App() {
           onClick={() => setMapType("outdoor")}
         >
           Outdoor Generator
+        </button>
+        <button
+          className={`type-button ${mapType === "outdoor_hex" ? "active" : ""}`}
+          onClick={() => setMapType("outdoor_hex")}
+        >
+          Outdoor Hex Generator
         </button>
         <button
           className={`type-button ${mapType === "city" ? "active" : ""}`}
