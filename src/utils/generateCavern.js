@@ -4,6 +4,18 @@
 // 3. Widen corridors to natural passages
 // 4. Apply organic growth for natural appearance
 import { addCavernLabels, assignAreaIds } from "./labelUtils";
+import { 
+  generateGenericRooms, 
+  generateGenericOrganicArea, 
+  carveGenericCorridor, 
+  applyGenericOrganicGrowth, 
+  cleanupGenericMap, 
+  widenCorridorsOrPaths, 
+  carveGenericHexCorridor, 
+  applyGenericHexOrganicGrowth, 
+  cleanupGenericHexMap, 
+  widenHexCorridorsOrPaths 
+} from "./mapGeneratorUtils";
 
 const MIN_ROOM_SIZE = 4;
 const MAX_ROOM_SIZE = 8;
@@ -585,62 +597,119 @@ function cleanupCavernMap(grid) {
 
 // Main cavern generation function
 export function generateCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
-  // Use hybrid approach for reliable connectivity
-  const foundation = generateTraditionalFoundation();
-  const caverns = transformRoomsToCaverns(foundation.grid, foundation.rooms);
-  transformCorridorsToPassages(foundation.grid, foundation.corridors);
-  applyOrganicGrowth(foundation.grid, caverns);
+  // 1. Create empty grid
+  const grid = createEmptyGrid(width, height);
 
-  // Add lakes to some caverns (similar to outdoor lakes)
+  // 2. Generate rooms
+  const rooms = generateGenericRooms({
+    minRoomSize: MIN_ROOM_SIZE,
+    maxRoomSize: MAX_ROOM_SIZE,
+    maxRooms: MAX_ROOMS,
+    maxAttempts: MAX_ATTEMPTS,
+    gridWidth: width,
+    gridHeight: height,
+    roomOverlaps,
+    randomInt,
+  });
+
+  // 3. Transform rooms to organic cavern areas
+  const caverns = rooms.map((room, index) => {
+    const cells = generateGenericOrganicArea(room, width, height, randomInt);
+    return { cells, number: `A${index + 1}` };
+  });
+  caverns.forEach((cavern) => {
+    cavern.cells.forEach(({ x, y }) => {
+      if (grid[y] && grid[y][x] && grid[y][x].type === "cavern_wall") {
+        grid[y][x].type = "cavern_floor";
+        grid[y][x].tileX = randomInt(0, 3);
+        grid[y][x].tileY = randomInt(0, 3);
+      }
+    });
+  });
+
+  // 4. Connect rooms with corridors
+  const corridors = [];
+  for (let i = 0; i < rooms.length; i++) {
+    const curr = roomCenter(rooms[i]);
+    const next = roomCenter(rooms[(i + 1) % rooms.length]);
+    const path = carveGenericCorridor(grid, curr, next, {
+      wallType: "cavern_wall",
+      corridorType: "cavern_corridor",
+      randomInt,
+    });
+    corridors.push({ number: `C${i + 1}`, path });
+  }
+
+  // 5. Widen/organically grow corridors
+  widenCorridorsOrPaths(grid, corridors, {
+    shrubType: "cavern_wall",
+    corridorType: "cavern_corridor",
+    randomInt,
+    gridWidth: width,
+    gridHeight: height,
+  });
+
+  // 6. Apply organic growth
+  applyGenericOrganicGrowth(grid, caverns, {
+    shrubType: "cavern_wall",
+    areaType: "cavern_floor",
+    randomInt,
+    gridWidth: width,
+    gridHeight: height,
+  });
+
+  // 7. Add lakes to some caverns
   const lakeCaverns = [];
   caverns.forEach((cavern) => {
-    // 30% chance for a cavern to become a lake
     if (Math.random() < 0.3) {
       cavern.cells.forEach(({ x, y }) => {
-        if (foundation.grid[y] && foundation.grid[y][x]) {
-          foundation.grid[y][x].type = "cavern_lake";
-          foundation.grid[y][x].tileX = randomInt(0, 3);
-          foundation.grid[y][x].tileY = randomInt(0, 3);
+        if (grid[y] && grid[y][x]) {
+          grid[y][x].type = "cavern_lake";
+          grid[y][x].tileX = randomInt(0, 3);
+          grid[y][x].tileY = randomInt(0, 3);
         }
       });
       lakeCaverns.push(cavern);
     }
   });
 
-  // Generate rivers between lakes (only one river per map)
+  // 8. Generate rivers between lakes (only one river per map)
   if (lakeCaverns.length >= 2) {
-    // Randomly select two different lake caverns
     const lake1 = lakeCaverns[Math.floor(Math.random() * lakeCaverns.length)];
     const remainingLakes = lakeCaverns.filter((lake) => lake !== lake1);
-    const lake2 =
-      remainingLakes[Math.floor(Math.random() * remainingLakes.length)];
-
+    const lake2 = remainingLakes[Math.floor(Math.random() * remainingLakes.length)];
     const center1 = cavernCenter(lake1);
     const center2 = cavernCenter(lake2);
-    carveRiver(foundation.grid, center1, center2);
+    carveRiver(grid, center1, center2);
   }
 
-  // Fill in random tileX/tileY for remaining walls
+  // 9. Fill in random tileX/tileY for remaining walls
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (foundation.grid[y][x].type === "cavern_wall") {
-        foundation.grid[y][x].tileX = randomInt(0, 3);
-        foundation.grid[y][x].tileY = randomInt(0, 3);
+      if (grid[y][x].type === "cavern_wall") {
+        grid[y][x].tileX = randomInt(0, 3);
+        grid[y][x].tileY = randomInt(0, 3);
       }
     }
   }
 
-  // Cleanup isolated tiles and unreachable areas
-  cleanupCavernMap(foundation.grid);
+  // 10. Cleanup isolated tiles and unreachable areas (shared logic)
+  cleanupGenericMap(grid, {
+    walkableTypes: ["cavern_floor", "cavern_corridor", "cavern_lake", "cavern_river"],
+    shrubType: "cavern_wall",
+    roadType: "cavern_corridor",
+    minRoadArea: 3,
+    randomInt,
+  });
 
-  // Assign areaIds to all walkable tiles
-  assignAreaIds(foundation.grid, "cavern_floor", "chamber");
-  assignAreaIds(foundation.grid, "cavern_corridor", "corridor");
-  assignAreaIds(foundation.grid, "cavern_lake", "lake");
-  assignAreaIds(foundation.grid, "cavern_river", "river");
+  // 11. Assign areaIds to all walkable tiles
+  assignAreaIds(grid, "cavern_floor", "chamber");
+  assignAreaIds(grid, "cavern_corridor", "corridor");
+  assignAreaIds(grid, "cavern_lake", "lake");
+  assignAreaIds(grid, "cavern_river", "river");
 
-  // Add labels
-  return addCavernLabels(foundation.grid, caverns, lakeCaverns);
+  // 12. Add labels
+  return addCavernLabels(grid);
 }
 
 // Returns CSS background-position for a 4x4 tileset (32px tiles)
@@ -1151,21 +1220,110 @@ function cleanupHexCavernMap(grid) {
       }
     }
   }
+
+  // Fifth pass: Remove single-tile cavern_floor (chamber) areas not adjacent to any other walkable tile (except water)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (grid[y][x].type === "cavern_floor") {
+        // Check if this is a single-tile chamber (no adjacent walkable tiles except water)
+        const hex = gridToHexCoords(x, y);
+        const neighbors = hexNeighbors(hex)
+          .map(({ q, r }) => hexToGridCoords(q, r))
+          .filter(({ x, y }) => x >= 0 && x < width && y >= 0 && y < height);
+        const hasWalkableNeighbor = neighbors.some(({ x: nx, y: ny }) => {
+          const t = grid[ny][nx].type;
+          return (
+            t === "cavern_floor" || t === "cavern_corridor" || t === "cavern_river" || t === "cavern_lake"
+          );
+        });
+        // Only remove if it has no walkable neighbor except water (allow islands in lakes/rivers)
+        const onlyWaterNeighbors = neighbors.every(({ x: nx, y: ny }) => {
+          const t = grid[ny][nx].type;
+          return t === "cavern_lake" || t === "cavern_river" || t === "cavern_wall";
+        });
+        if (!hasWalkableNeighbor && !onlyWaterNeighbors) {
+          grid[y][x].type = "cavern_wall";
+          grid[y][x].tileX = randomInt(0, 3);
+          grid[y][x].tileY = randomInt(0, 3);
+          delete grid[y][x].originalType;
+        }
+      }
+    }
+  }
 }
 
 // Main hex cavern generation function
 export function generateHexCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
+  // 1. Create empty grid
   const grid = createHexCavernEmptyGrid(width, height);
-  const rooms = generateHexCavernRooms();
-  const corridors = connectHexCavernRooms(grid, rooms);
-  const caverns = transformHexRoomsToCaverns(grid, rooms);
-  transformHexCorridorsToPassages(grid, corridors);
-  applyHexCavernOrganicGrowth(grid, caverns);
-  
-  // Add lakes to some caverns (similar to square caverns)
+
+  // 2. Generate rooms
+  const rooms = generateGenericRooms({
+    minRoomSize: MIN_ROOM_SIZE,
+    maxRoomSize: MAX_ROOM_SIZE,
+    maxRooms: MAX_ROOMS,
+    maxAttempts: MAX_ATTEMPTS,
+    gridWidth: width,
+    gridHeight: height,
+    roomOverlaps,
+    randomInt,
+  });
+
+  // 3. Transform rooms to organic cavern areas
+  const caverns = rooms.map((room, index) => {
+    const cells = generateGenericOrganicArea(room, width, height, randomInt);
+    return { cells, number: `A${index + 1}` };
+  });
+  caverns.forEach((cavern) => {
+    cavern.cells.forEach(({ x, y }) => {
+      if (grid[y] && grid[y][x] && grid[y][x].type === "cavern_wall") {
+        grid[y][x].type = "cavern_floor";
+        grid[y][x].tileX = randomInt(0, 3);
+        grid[y][x].tileY = randomInt(0, 3);
+      }
+    });
+  });
+
+  // 4. Connect rooms with corridors
+  const corridors = [];
+  for (let i = 0; i < rooms.length; i++) {
+    const curr = roomCenter(rooms[i]);
+    const next = roomCenter(rooms[(i + 1) % rooms.length]);
+    const path = carveGenericHexCorridor(grid, curr, next, {
+      wallType: "cavern_wall",
+      corridorType: "cavern_corridor",
+      randomInt,
+    });
+    corridors.push({ number: `C${i + 1}`, path });
+  }
+
+  // 5. Widen/organically grow corridors
+  widenHexCorridorsOrPaths(grid, corridors, {
+    shrubType: "cavern_wall",
+    corridorType: "cavern_corridor",
+    randomInt,
+    gridWidth: width,
+    gridHeight: height,
+    gridToHexCoords,
+    hexNeighbors,
+    hexToGridCoords,
+  });
+
+  // 6. Apply organic growth
+  applyGenericHexOrganicGrowth(grid, caverns, {
+    shrubType: "cavern_wall",
+    areaType: "cavern_floor",
+    randomInt,
+    gridWidth: width,
+    gridHeight: height,
+    gridToHexCoords,
+    hexNeighbors,
+    hexToGridCoords,
+  });
+
+  // 7. Add lakes to some caverns
   const lakeCaverns = [];
   caverns.forEach((cavern) => {
-    // 30% chance for a cavern to become a lake
     if (Math.random() < 0.3) {
       cavern.cells.forEach(({ x, y }) => {
         if (grid[y] && grid[y][x]) {
@@ -1177,10 +1335,9 @@ export function generateHexCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
       lakeCaverns.push(cavern);
     }
   });
-  
-  // Generate rivers between lakes (only one river per map)
+
+  // 8. Generate rivers between lakes (only one river per map)
   if (lakeCaverns.length >= 2) {
-    // Randomly select two different lake caverns
     const lake1 = lakeCaverns[Math.floor(Math.random() * lakeCaverns.length)];
     const remainingLakes = lakeCaverns.filter((lake) => lake !== lake1);
     const lake2 = remainingLakes[Math.floor(Math.random() * remainingLakes.length)];
@@ -1188,8 +1345,8 @@ export function generateHexCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
     const center2 = cavernCenter(lake2);
     carveHexCavernRiver(grid, center1, center2, "cavern_river", "cavern_lake");
   }
-  
-  // Fill in random tileX/tileY for remaining walls
+
+  // 9. Fill in random tileX/tileY for remaining walls
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       if (grid[y][x].type === "cavern_wall") {
@@ -1198,16 +1355,25 @@ export function generateHexCavern(width = GRID_WIDTH, height = GRID_HEIGHT) {
       }
     }
   }
-  
-  // Cleanup isolated tiles and unreachable areas (hex version)
-  cleanupHexCavernMap(grid);
-  
-  // Assign areaIds to all walkable tiles
+
+  // 10. Cleanup isolated tiles and unreachable areas (shared logic)
+  cleanupGenericHexMap(grid, {
+    walkableTypes: ["cavern_floor", "cavern_corridor", "cavern_lake", "cavern_river"],
+    shrubType: "cavern_wall",
+    roadType: "cavern_corridor",
+    minRoadArea: 3,
+    randomInt,
+    gridToHexCoords,
+    hexNeighbors,
+    hexToGridCoords,
+  });
+
+  // 11. Assign areaIds to all walkable tiles
   assignAreaIds(grid, "cavern_floor", "chamber");
   assignAreaIds(grid, "cavern_corridor", "corridor");
   assignAreaIds(grid, "cavern_lake", "lake");
   assignAreaIds(grid, "cavern_river", "river");
-  
-  // Add labels
+
+  // 12. Add labels
   return addCavernLabels(grid);
 }
