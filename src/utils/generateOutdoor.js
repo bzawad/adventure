@@ -449,6 +449,225 @@ function generateRadiationZone(grid, areas) {
   };
 }
 
+// Post-generation cleanup to remove isolated single tiles and unreachable areas
+function cleanupOutdoorMap(grid) {
+  const height = grid.length;
+  const width = grid[0].length;
+
+  // Define walkable tile types for outdoor maps
+  const walkableTypes = [
+    "outdoor_area",
+    "outdoor_road",
+    "outdoor_lake",
+    "outdoor_mountain",
+    "outdoor_river",
+  ];
+
+  // Helper function to check if a tile is walkable
+  const isWalkable = (x, y) => {
+    if (x < 0 || x >= width || y < 0 || y >= height) return false;
+    return (
+      walkableTypes.includes(grid[y][x].type) ||
+      (grid[y][x].originalType &&
+        walkableTypes.includes(grid[y][x].originalType))
+    );
+  };
+
+  // Helper function to get adjacent walkable neighbors (north, east, south, west only)
+  const getAdjacentWalkableCount = (x, y) => {
+    const directions = [
+      [0, -1], // north
+      [1, 0], // east
+      [0, 1], // south
+      [-1, 0], // west
+    ];
+    return directions.filter(([dx, dy]) => isWalkable(x + dx, y + dy)).length;
+  };
+
+  // Helper function to get adjacent tiles of same type
+  const getAdjacentSameTypeCount = (x, y, tileType) => {
+    const directions = [
+      [0, -1], // north
+      [1, 0], // east
+      [0, 1], // south
+      [-1, 0], // west
+    ];
+    return directions.filter(([dx, dy]) => {
+      const nx = x + dx,
+        ny = y + dy;
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
+      return (
+        grid[ny][nx].type === tileType ||
+        (grid[ny][nx].originalType && grid[ny][nx].originalType === tileType)
+      );
+    }).length;
+  };
+
+  // First pass: Remove isolated single tiles (no adjacent walkable tiles)
+  const tilesToRemove = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (isWalkable(x, y)) {
+        const adjacentCount = getAdjacentWalkableCount(x, y);
+        if (adjacentCount === 0) {
+          tilesToRemove.push({ x, y });
+        }
+      }
+    }
+  }
+
+  // Convert isolated tiles to shrubs
+  tilesToRemove.forEach(({ x, y }) => {
+    grid[y][x].type = "outdoor_shrub";
+    grid[y][x].tileX = randomInt(0, 3);
+    grid[y][x].tileY = randomInt(0, 3);
+    delete grid[y][x].originalType;
+  });
+
+  // Second pass: Remove single-tile areas (areas with only 1 tile)
+  const visited = Array.from({ length: height }, () =>
+    Array(width).fill(false),
+  );
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!visited[y][x] && isWalkable(x, y)) {
+        // Flood fill to find connected area
+        const area = [];
+        const stack = [{ x, y }];
+        visited[y][x] = true;
+
+        while (stack.length > 0) {
+          const current = stack.pop();
+          area.push(current);
+
+          // Check 4-directional neighbors
+          const directions = [
+            [0, -1],
+            [1, 0],
+            [0, 1],
+            [-1, 0],
+          ];
+
+          directions.forEach(([dx, dy]) => {
+            const nx = current.x + dx;
+            const ny = current.y + dy;
+
+            if (
+              nx >= 0 &&
+              nx < width &&
+              ny >= 0 &&
+              ny < height &&
+              !visited[ny][nx] &&
+              isWalkable(nx, ny)
+            ) {
+              visited[ny][nx] = true;
+              stack.push({ x: nx, y: ny });
+            }
+          });
+        }
+
+        // If area has only 1 tile, convert it to shrub
+        if (area.length === 1) {
+          const { x: tileX, y: tileY } = area[0];
+          grid[tileY][tileX].type = "outdoor_shrub";
+          grid[tileY][tileX].tileX = randomInt(0, 3);
+          grid[tileY][tileX].tileY = randomInt(0, 3);
+          delete grid[tileY][tileX].originalType;
+        }
+      }
+    }
+  }
+
+  // Third pass: Aggressively remove single road tiles and small road areas
+  const roadTilesToRemove = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (
+        grid[y][x].type === "outdoor_road" ||
+        (grid[y][x].originalType && grid[y][x].originalType === "outdoor_road")
+      ) {
+        const adjacentRoads = getAdjacentSameTypeCount(x, y, "outdoor_road");
+        // Remove single road tiles that have no adjacent roads
+        if (adjacentRoads === 0) {
+          roadTilesToRemove.push({ x, y });
+        }
+      }
+    }
+  }
+
+  // Convert single road tiles to shrubs
+  roadTilesToRemove.forEach(({ x, y }) => {
+    grid[y][x].type = "outdoor_shrub";
+    grid[y][x].tileX = randomInt(0, 3);
+    grid[y][x].tileY = randomInt(0, 3);
+    delete grid[y][x].originalType;
+  });
+
+  // Fourth pass: Remove small road areas (less than 3 tiles)
+  const roadVisited = Array.from({ length: height }, () =>
+    Array(width).fill(false),
+  );
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (
+        !roadVisited[y][x] &&
+        (grid[y][x].type === "outdoor_road" ||
+          (grid[y][x].originalType &&
+            grid[y][x].originalType === "outdoor_road"))
+      ) {
+        // Flood fill to find connected road area
+        const roadArea = [];
+        const stack = [{ x, y }];
+        roadVisited[y][x] = true;
+
+        while (stack.length > 0) {
+          const current = stack.pop();
+          roadArea.push(current);
+
+          // Check 4-directional neighbors for same road type
+          const directions = [
+            [0, -1],
+            [1, 0],
+            [0, 1],
+            [-1, 0],
+          ];
+
+          directions.forEach(([dx, dy]) => {
+            const nx = current.x + dx;
+            const ny = current.y + dy;
+
+            if (
+              nx >= 0 &&
+              nx < width &&
+              ny >= 0 &&
+              ny < height &&
+              !roadVisited[ny][nx] &&
+              (grid[ny][nx].type === "outdoor_road" ||
+                (grid[ny][nx].originalType &&
+                  grid[ny][nx].originalType === "outdoor_road"))
+            ) {
+              roadVisited[ny][nx] = true;
+              stack.push({ x: nx, y: ny });
+            }
+          });
+        }
+
+        // If road area has less than 3 tiles, convert to shrubs
+        if (roadArea.length < 3) {
+          roadArea.forEach(({ x: tileX, y: tileY }) => {
+            grid[tileY][tileX].type = "outdoor_shrub";
+            grid[tileY][tileX].tileX = randomInt(0, 3);
+            grid[tileY][tileX].tileY = randomInt(0, 3);
+            delete grid[tileY][tileX].originalType;
+          });
+        }
+      }
+    }
+  }
+}
+
 // Main outdoor generation function
 export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // Use hybrid approach for reliable connectivity
@@ -496,6 +715,9 @@ export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // Generate radiation zone
   const radiationZone = generateRadiationZone(foundation.grid, areas);
 
+  // Cleanup isolated tiles and unreachable areas
+  cleanupOutdoorMap(foundation.grid);
+
   // Assign areaIds to all walkable tiles
   assignAreaIds(foundation.grid, "outdoor_area", "area");
   assignAreaIds(foundation.grid, "outdoor_road", "road");
@@ -522,48 +744,25 @@ export function getTileBackgroundPosition(tileX, tileY) {
 
 // ===== HEX-BASED OUTDOOR GENERATOR =====
 
-// Hex grid utilities for odd-q vertical offset layout
-function hexToPixel(q, r, size = 32) {
-  const x = size * (Math.sqrt(3) * q + Math.sqrt(3) / 2 * r);
-  const y = size * (3 / 2 * r);
-  return { x, y };
-}
-
-function pixelToHex(x, y, size = 32) {
-  const q = (Math.sqrt(3) / 3 * x - 1 / 3 * y) / size;
-  const r = (2 / 3 * y) / size;
-  return hexRound(q, r);
-}
-
-function hexRound(q, r) {
-  let s = -q - r;
-  let qi = Math.round(q);
-  let ri = Math.round(r);
-  let si = Math.round(s);
-  
-  const qDiff = Math.abs(qi - q);
-  const rDiff = Math.abs(ri - r);
-  const sDiff = Math.abs(si - s);
-  
-  if (qDiff > rDiff && qDiff > sDiff) {
-    qi = -ri - si;
-  } else if (rDiff > sDiff) {
-    ri = -qi - si;
-  }
-  
-  return { q: qi, r: ri };
-}
-
 function hexDistance(a, b) {
-  return (Math.abs(a.q - b.q) + Math.abs(a.q + a.r - b.q - b.r) + Math.abs(a.r - b.r)) / 2;
+  return (
+    (Math.abs(a.q - b.q) +
+      Math.abs(a.q + a.r - b.q - b.r) +
+      Math.abs(a.r - b.r)) /
+    2
+  );
 }
 
 function hexNeighbors(hex) {
   const directions = [
-    { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
-    { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 }
+    { q: 1, r: 0 },
+    { q: 1, r: -1 },
+    { q: 0, r: -1 },
+    { q: -1, r: 0 },
+    { q: -1, r: 1 },
+    { q: 0, r: 1 },
   ];
-  return directions.map(dir => ({ q: hex.q + dir.q, r: hex.r + dir.r }));
+  return directions.map((dir) => ({ q: hex.q + dir.q, r: hex.r + dir.r }));
 }
 
 // Convert between hex and grid coordinates for display
@@ -617,14 +816,14 @@ function generateHexOrganicArea(room) {
       cells.push({ x, y });
     }
   }
-  
+
   // Add organic expansion using hex neighbors
   const expandedCells = [...cells];
   cells.forEach(({ x, y }) => {
     const hex = gridToHexCoords(x, y);
     const neighbors = hexNeighbors(hex);
-    
-    neighbors.forEach(neighbor => {
+
+    neighbors.forEach((neighbor) => {
       const gridPos = hexToGridCoords(neighbor.q, neighbor.r);
       if (
         Math.random() < 0.4 &&
@@ -637,7 +836,7 @@ function generateHexOrganicArea(room) {
       }
     });
   });
-  
+
   // Remove duplicates
   return expandedCells.filter(
     (cell, index, self) =>
@@ -772,8 +971,8 @@ function transformHexCorridorsToPaths(grid, corridors) {
         // Add adjacent cells using hex neighbors
         const hex = gridToHexCoords(x, y);
         const neighbors = hexNeighbors(hex);
-        
-        neighbors.forEach(neighbor => {
+
+        neighbors.forEach((neighbor) => {
           const gridPos = hexToGridCoords(neighbor.q, neighbor.r);
           if (
             gridPos.x > 0 &&
@@ -806,19 +1005,19 @@ function applyHexOrganicGrowth(grid, areas) {
     const seeds = area.cells
       .sort(() => Math.random() - 0.5)
       .slice(0, seedCount);
-    
+
     // Grow blobs from seed points using hex neighbors
     for (let iteration = 0; iteration < 2; iteration++) {
       seeds.forEach(({ x, y }) => {
         const hex = gridToHexCoords(x, y);
         const neighbors = hexNeighbors(hex);
-        
+
         // Randomly select 4 directions
         const randomNeighbors = neighbors
           .sort(() => Math.random() - 0.5)
           .slice(0, 4);
-          
-        randomNeighbors.forEach(neighbor => {
+
+        randomNeighbors.forEach((neighbor) => {
           const gridPos = hexToGridCoords(neighbor.q, neighbor.r);
           if (
             gridPos.x > 0 &&
@@ -847,7 +1046,7 @@ function applyHexOrganicGrowth(grid, areas) {
 function carveHexRiver(grid, from, to) {
   let { x: x1, y: y1 } = from;
   let { x: x2, y: y2 } = to;
-  
+
   // L-shaped path: horizontal then vertical or vice versa (randomize)
   if (Math.random() < 0.5) {
     // Horizontal then vertical
@@ -915,41 +1114,47 @@ function carveHexRiver(grid, from, to) {
 // Hex-based radiation zone generation
 function generateHexRadiationZone(grid, areas) {
   // Find a random area to place the radiation center
-  const validAreas = areas.filter(area => 
-    area.cells.length > 0 && 
-    !area.isWater && 
-    !area.isMountain
+  const validAreas = areas.filter(
+    (area) => area.cells.length > 0 && !area.isWater && !area.isMountain,
   );
-  
+
   if (validAreas.length === 0) {
     return null; // No valid areas for radiation
   }
-  
+
   // Pick a random area
   const targetArea = validAreas[Math.floor(Math.random() * validAreas.length)];
-  
+
   // Find center of the target area
   const areaCenter = targetArea.cells.reduce(
     (acc, cell) => ({ x: acc.x + cell.x, y: acc.y + cell.y }),
-    { x: 0, y: 0 }
+    { x: 0, y: 0 },
   );
   areaCenter.x = Math.round(areaCenter.x / targetArea.cells.length);
   areaCenter.y = Math.round(areaCenter.y / targetArea.cells.length);
-  
+
   // Add some randomness to the center position within the area
   const centerX = areaCenter.x + randomInt(-2, 2);
   const centerY = areaCenter.y + randomInt(-2, 2);
-  
+
   const radius = 8;
   const radiationCells = [];
-  
+
   // Generate circular radiation zone using hex distance
-  for (let y = Math.max(0, centerY - radius); y <= Math.min(GRID_HEIGHT - 1, centerY + radius); y++) {
-    for (let x = Math.max(0, centerX - radius); x <= Math.min(GRID_WIDTH - 1, centerX + radius); x++) {
+  for (
+    let y = Math.max(0, centerY - radius);
+    y <= Math.min(GRID_HEIGHT - 1, centerY + radius);
+    y++
+  ) {
+    for (
+      let x = Math.max(0, centerX - radius);
+      x <= Math.min(GRID_WIDTH - 1, centerX + radius);
+      x++
+    ) {
       const centerHex = gridToHexCoords(centerX, centerY);
       const currentHex = gridToHexCoords(x, y);
       const distance = hexDistance(centerHex, currentHex);
-      
+
       if (distance <= radius) {
         // Mark tile as radioactive
         if (grid[y] && grid[y][x]) {
@@ -959,11 +1164,11 @@ function generateHexRadiationZone(grid, areas) {
       }
     }
   }
-  
+
   return {
     center: { x: centerX, y: centerY },
     radius: radius,
-    cells: radiationCells
+    cells: radiationCells,
   };
 }
 
@@ -979,10 +1184,13 @@ function generateHexTraditionalFoundation() {
 export function generateHexOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // Use hybrid approach for reliable connectivity
   const foundation = generateHexTraditionalFoundation();
-  const areas = transformHexRoomsToOutdoorAreas(foundation.grid, foundation.rooms);
+  const areas = transformHexRoomsToOutdoorAreas(
+    foundation.grid,
+    foundation.rooms,
+  );
   transformHexCorridorsToPaths(foundation.grid, foundation.corridors);
   applyHexOrganicGrowth(foundation.grid, areas);
-  
+
   // Fill in random tileX/tileY for remaining walls
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -992,7 +1200,7 @@ export function generateHexOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
       }
     }
   }
-  
+
   // Add rivers based on map features
   const waterAreas = areas.filter((a) => a.isWater);
   const mountainAreas = areas.filter((a) => a.isMountain);
@@ -1024,6 +1232,9 @@ export function generateHexOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // Generate radiation zone
   const radiationZone = generateHexRadiationZone(foundation.grid, areas);
 
+  // Cleanup isolated tiles and unreachable areas
+  cleanupOutdoorMap(foundation.grid);
+
   // Assign areaIds to all walkable tiles
   assignAreaIds(foundation.grid, "outdoor_area", "area");
   assignAreaIds(foundation.grid, "outdoor_road", "road");
@@ -1033,11 +1244,11 @@ export function generateHexOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
 
   // Add labels
   const result = addOutdoorLabels(foundation.grid, areas, waterAreas);
-  
+
   // Add radiation zone info to the result
   if (radiationZone) {
     result.radiationZone = radiationZone;
   }
-  
+
   return result;
 }

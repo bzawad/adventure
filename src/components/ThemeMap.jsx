@@ -211,16 +211,6 @@ const ThemeMap = ({
     }
   }
 
-  function rotatePoint(x, y, angleDeg, cx = 16, cy = 16) {
-    // Rotates (x, y) around (cx, cy) by angleDeg
-    const angle = (angleDeg * Math.PI) / 180;
-    const dx = x - cx;
-    const dy = y - cy;
-    const rx = dx * Math.cos(angle) - dy * Math.sin(angle);
-    const ry = dx * Math.sin(angle) + dy * Math.cos(angle);
-    return { left: Math.round(cx + rx), top: Math.round(cy + ry) };
-  }
-
   function getDoorIconPosition(orientation, which, both) {
     // which: 'lock' or 'trap'; both: true if both icons are present
     // Returns {left, top, width, height} in px for 32x32 tile
@@ -237,28 +227,23 @@ const ThemeMap = ({
         return { left: 0, top: 8, width: iconSize, height: iconSize };
       }
     } else {
-      // Dual icons: base positions for south (unrotated), match single icon's vertical alignment
-      let base = { left: 0, top: 16 };
-      if (which === "lock") base.left = 0;
-      if (which === "trap") base.left = 16;
-      // Now rotate base position for orientation
-      let rotated;
+      // Dual icons: explicit positions for each orientation
+      let left = 0,
+        top = 0;
       if (orientation === "south") {
-        rotated = { left: base.left, top: base.top };
-      } else if (orientation === "east") {
-        rotated = rotatePoint(base.left + 8, base.top + 8, 90, 16, 16); // +8 to center icon
-        rotated.left -= 8;
-        rotated.top -= 8;
+        top = 16;
+        left = which === "lock" ? 0 : 16;
       } else if (orientation === "north") {
-        rotated = rotatePoint(base.left + 8, base.top + 8, 180, 16, 16);
-        rotated.left -= 8;
-        rotated.top -= 8;
+        top = 0;
+        left = which === "lock" ? 0 : 16;
+      } else if (orientation === "east") {
+        left = 16;
+        top = which === "lock" ? 0 : 16;
       } else if (orientation === "west") {
-        rotated = rotatePoint(base.left + 8, base.top + 8, 270, 16, 16);
-        rotated.left -= 8;
-        rotated.top -= 8;
+        left = 0;
+        top = which === "lock" ? 0 : 16;
       }
-      return { ...rotated, width: iconSize, height: iconSize };
+      return { left, top, width: iconSize, height: iconSize };
     }
   }
 
@@ -309,9 +294,18 @@ const ThemeMap = ({
         </button>
       </div>
 
-      <div className={mapType === "outdoor_hex" ? "dungeon-grid hex-grid" : "dungeon-grid"}>
+      <div
+        className={
+          mapType === "outdoor_hex" ? "dungeon-grid hex-grid" : "dungeon-grid"
+        }
+      >
         {dungeon.map((row, rowIndex) => (
-          <div key={rowIndex} className={mapType === "outdoor_hex" ? "dungeon-row hex-row" : "dungeon-row"}>
+          <div
+            key={rowIndex}
+            className={
+              mapType === "outdoor_hex" ? "dungeon-row hex-row" : "dungeon-row"
+            }
+          >
             {row.map((tile, colIndex) => {
               const isLabel = Boolean(tile.label);
               const isHighlighted =
@@ -449,7 +443,13 @@ ThemeMap.propTypes = {
   width: PropTypes.number,
   height: PropTypes.number,
   minFloorTiles: PropTypes.number,
-  mapType: PropTypes.oneOf(["dungeon", "cavern", "outdoor", "outdoor_hex", "city"]),
+  mapType: PropTypes.oneOf([
+    "dungeon",
+    "cavern",
+    "outdoor",
+    "outdoor_hex",
+    "city",
+  ]),
 };
 
 export default ThemeMap;
