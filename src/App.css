@@ -45,3 +45,17 @@
 .type-button:active {
   transform: translateY(0);
 }
+
+/* Radiation overlay styling */
+.radiation-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 255, 0, 0.15);
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 2px;
+  box-shadow: inset 0 0 4px rgba(0, 255, 0, 0.25);
+}

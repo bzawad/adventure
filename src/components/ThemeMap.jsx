@@ -174,6 +174,10 @@ const ThemeMap = ({
       ).length;
   };
 
+  const countRadiationTiles = () => {
+    return dungeon.flat().filter((tile) => tile.radioactive).length;
+  };
+
   const getMapTitle = () => {
     if (mapType === "cavern") return "Cavern Map Generator";
     if (mapType === "outdoor") return "Outdoor Map Generator";
@@ -278,6 +282,7 @@ const ThemeMap = ({
               <span>Corridor tiles: {countCorridorTiles()}</span>
               <span>Mountain tiles: {countMountainTiles()}</span>
               <span>River tiles: {countRiverTiles()}</span>
+              <span>Radiation tiles: {countRadiationTiles()}</span>
             </>
           ) : mapType === "cavern" ? (
             <>
@@ -317,7 +322,8 @@ const ThemeMap = ({
                   title={
                     `${tile.type} at (${colIndex}, ${rowIndex})` +
                     (tile.label ? ` | label: ${tile.label}` : "") +
-                    (tile.areaId ? ` | areaId: ${tile.areaId}` : "")
+                    (tile.areaId ? ` | areaId: ${tile.areaId}` : "") +
+                    (tile.radioactive ? ` | RADIOACTIVE` : "")
                   }
                   data-label={tile.label || undefined}
                   data-label-type={getLabelType(tile.type) || undefined}
@@ -333,6 +339,7 @@ const ThemeMap = ({
                   }
                 >
                   {tile.label}
+                  {tile.radioactive && <div className="radiation-overlay" />}
                   {tile.door && (
                     <>
                       <img

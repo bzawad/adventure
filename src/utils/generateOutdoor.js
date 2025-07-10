@@ -391,6 +391,64 @@ function carveRiver(grid, from, to) {
   }
 }
 
+// Generate radiation zone - circular area with radius 7 (diameter 14)
+function generateRadiationZone(grid, areas) {
+  // Find a random area to place the radiation center
+  const validAreas = areas.filter(
+    (area) => area.cells.length > 0 && !area.isWater && !area.isMountain,
+  );
+
+  if (validAreas.length === 0) {
+    return null; // No valid areas for radiation
+  }
+
+  // Pick a random area
+  const targetArea = validAreas[Math.floor(Math.random() * validAreas.length)];
+
+  // Find center of the target area
+  const areaCenter = targetArea.cells.reduce(
+    (acc, cell) => ({ x: acc.x + cell.x, y: acc.y + cell.y }),
+    { x: 0, y: 0 },
+  );
+  areaCenter.x = Math.round(areaCenter.x / targetArea.cells.length);
+  areaCenter.y = Math.round(areaCenter.y / targetArea.cells.length);
+
+  // Add some randomness to the center position within the area
+  const centerX = areaCenter.x + randomInt(-2, 2);
+  const centerY = areaCenter.y + randomInt(-2, 2);
+
+  const radius = 8;
+  const radiationCells = [];
+
+  // Generate circular radiation zone
+  for (
+    let y = Math.max(0, centerY - radius);
+    y <= Math.min(GRID_HEIGHT - 1, centerY + radius);
+    y++
+  ) {
+    for (
+      let x = Math.max(0, centerX - radius);
+      x <= Math.min(GRID_WIDTH - 1, centerX + radius);
+      x++
+    ) {
+      const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+      if (distance <= radius) {
+        // Mark tile as radioactive
+        if (grid[y] && grid[y][x]) {
+          grid[y][x].radioactive = true;
+          radiationCells.push({ x, y });
+        }
+      }
+    }
+  }
+
+  return {
+    center: { x: centerX, y: centerY },
+    radius: radius,
+    cells: radiationCells,
+  };
+}
+
 // Main outdoor generation function
 export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
   // Use hybrid approach for reliable connectivity
@@ -435,6 +493,9 @@ export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
     carveRiver(foundation.grid, c1, c2);
   }
 
+  // Generate radiation zone
+  const radiationZone = generateRadiationZone(foundation.grid, areas);
+
   // Assign areaIds to all walkable tiles
   assignAreaIds(foundation.grid, "outdoor_area", "area");
   assignAreaIds(foundation.grid, "outdoor_road", "road");
@@ -443,7 +504,14 @@ export function generateOutdoor(width = GRID_WIDTH, height = GRID_HEIGHT) {
   assignAreaIds(foundation.grid, "outdoor_river", "river");
 
   // Add labels
-  return addOutdoorLabels(foundation.grid, areas, waterAreas);
+  const result = addOutdoorLabels(foundation.grid, areas, waterAreas);
+
+  // Add radiation zone info to the result
+  if (radiationZone) {
+    result.radiationZone = radiationZone;
+  }
+
+  return result;
 }
 
 // Returns CSS background-position for a 4x4 tileset (32px tiles)
