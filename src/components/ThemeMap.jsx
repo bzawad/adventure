@@ -123,7 +123,8 @@ const ThemeMap = ({
 
   const countWallTiles = () => {
     if (mapType === "outdoor" || mapType === "outdoor_hex") {
-      return dungeon.flat().filter((tile) => tile.type === "outdoor_shrub").length;
+      return dungeon.flat().filter((tile) => tile.type === "outdoor_shrub")
+        .length;
     }
     return dungeon
       .flat()
@@ -137,7 +138,8 @@ const ThemeMap = ({
 
   const countCorridorTiles = () => {
     if (mapType === "outdoor" || mapType === "outdoor_hex") {
-      return dungeon.flat().filter((tile) => tile.type === "outdoor_road").length;
+      return dungeon.flat().filter((tile) => tile.type === "outdoor_road")
+        .length;
     }
     return dungeon
       .flat()

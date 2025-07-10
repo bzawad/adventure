@@ -28,7 +28,7 @@ export function generateGenericRooms({
 }
 
 // Generic organic area/cavern growth
-export function generateGenericOrganicArea(room, gridWidth, gridHeight, randomInt) {
+export function generateGenericOrganicArea(room, gridWidth, gridHeight) {
   const cells = [];
   for (let y = room.y; y < room.y + room.height; y++) {
     for (let x = room.x; x < room.x + room.width; x++) {
@@ -62,17 +62,20 @@ export function generateGenericOrganicArea(room, gridWidth, gridHeight, randomIn
 }
 
 // Generic corridor/path carving for square grids
-export function carveGenericCorridor(grid, from, to, {
-  wallType,
-  corridorType,
-  randomInt,
-  carveHorizontalFirst = true,
-}) {
+export function carveGenericCorridor(
+  grid,
+  from,
+  to,
+  { wallType, corridorType, randomInt, carveHorizontalFirst = true },
+) {
   let path = [];
   if (carveHorizontalFirst ? Math.random() < 0.5 : Math.random() >= 0.5) {
     // Horizontal then vertical
     for (let x = Math.min(from.x, to.x); x <= Math.max(from.x, to.x); x++) {
-      if (grid[from.y][x].type === wallType || grid[from.y][x].type === corridorType) {
+      if (
+        grid[from.y][x].type === wallType ||
+        grid[from.y][x].type === corridorType
+      ) {
         grid[from.y][x].type = corridorType;
         grid[from.y][x].tileX = randomInt(0, 3);
         grid[from.y][x].tileY = randomInt(0, 3);
@@ -80,7 +83,10 @@ export function carveGenericCorridor(grid, from, to, {
       path.push({ x, y: from.y });
     }
     for (let y = Math.min(from.y, to.y); y <= Math.max(from.y, to.y); y++) {
-      if (grid[y][to.x].type === wallType || grid[y][to.x].type === corridorType) {
+      if (
+        grid[y][to.x].type === wallType ||
+        grid[y][to.x].type === corridorType
+      ) {
         grid[y][to.x].type = corridorType;
         grid[y][to.x].tileX = randomInt(0, 3);
         grid[y][to.x].tileY = randomInt(0, 3);
@@ -90,7 +96,10 @@ export function carveGenericCorridor(grid, from, to, {
   } else {
     // Vertical then horizontal
     for (let y = Math.min(from.y, to.y); y <= Math.max(from.y, to.y); y++) {
-      if (grid[y][from.x].type === wallType || grid[y][from.x].type === corridorType) {
+      if (
+        grid[y][from.x].type === wallType ||
+        grid[y][from.x].type === corridorType
+      ) {
         grid[y][from.x].type = corridorType;
         grid[y][from.x].tileX = randomInt(0, 3);
         grid[y][from.x].tileY = randomInt(0, 3);
@@ -98,7 +107,10 @@ export function carveGenericCorridor(grid, from, to, {
       path.push({ x: from.x, y });
     }
     for (let x = Math.min(from.x, to.x); x <= Math.max(from.x, to.x); x++) {
-      if (grid[to.y][x].type === wallType || grid[to.y][x].type === corridorType) {
+      if (
+        grid[to.y][x].type === wallType ||
+        grid[to.y][x].type === corridorType
+      ) {
         grid[to.y][x].type = corridorType;
         grid[to.y][x].tileX = randomInt(0, 3);
         grid[to.y][x].tileY = randomInt(0, 3);
@@ -110,17 +122,20 @@ export function carveGenericCorridor(grid, from, to, {
 }
 
 // Generic corridor/path carving for hex grids
-export function carveGenericHexCorridor(grid, from, to, {
-  wallType,
-  corridorType,
-  randomInt,
-  carveHorizontalFirst = true,
-}) {
+export function carveGenericHexCorridor(
+  grid,
+  from,
+  to,
+  { wallType, corridorType, randomInt, carveHorizontalFirst = true },
+) {
   let path = [];
   if (carveHorizontalFirst ? Math.random() < 0.5 : Math.random() >= 0.5) {
     // Horizontal then vertical
     for (let x = Math.min(from.x, to.x); x <= Math.max(from.x, to.x); x++) {
-      if (grid[from.y][x].type === wallType || grid[from.y][x].type === corridorType) {
+      if (
+        grid[from.y][x].type === wallType ||
+        grid[from.y][x].type === corridorType
+      ) {
         grid[from.y][x].type = corridorType;
         grid[from.y][x].tileX = randomInt(0, 3);
         grid[from.y][x].tileY = randomInt(0, 3);
@@ -128,7 +143,10 @@ export function carveGenericHexCorridor(grid, from, to, {
       path.push({ x, y: from.y });
     }
     for (let y = Math.min(from.y, to.y); y <= Math.max(from.y, to.y); y++) {
-      if (grid[y][to.x].type === wallType || grid[y][to.x].type === corridorType) {
+      if (
+        grid[y][to.x].type === wallType ||
+        grid[y][to.x].type === corridorType
+      ) {
         grid[y][to.x].type = corridorType;
         grid[y][to.x].tileX = randomInt(0, 3);
         grid[y][to.x].tileY = randomInt(0, 3);
@@ -138,7 +156,10 @@ export function carveGenericHexCorridor(grid, from, to, {
   } else {
     // Vertical then horizontal
     for (let y = Math.min(from.y, to.y); y <= Math.max(from.y, to.y); y++) {
-      if (grid[y][from.x].type === wallType || grid[y][from.x].type === corridorType) {
+      if (
+        grid[y][from.x].type === wallType ||
+        grid[y][from.x].type === corridorType
+      ) {
         grid[y][from.x].type = corridorType;
         grid[y][from.x].tileX = randomInt(0, 3);
         grid[y][from.x].tileY = randomInt(0, 3);
@@ -146,7 +167,10 @@ export function carveGenericHexCorridor(grid, from, to, {
       path.push({ x: from.x, y });
     }
     for (let x = Math.min(from.x, to.x); x <= Math.max(from.x, to.x); x++) {
-      if (grid[to.y][x].type === wallType || grid[to.y][x].type === corridorType) {
+      if (
+        grid[to.y][x].type === wallType ||
+        grid[to.y][x].type === corridorType
+      ) {
         grid[to.y][x].type = corridorType;
         grid[to.y][x].tileX = randomInt(0, 3);
         grid[to.y][x].tileY = randomInt(0, 3);
@@ -158,13 +182,11 @@ export function carveGenericHexCorridor(grid, from, to, {
 }
 
 // Generic organic blob growth for square grids
-export function applyGenericOrganicGrowth(grid, areas, {
-  shrubType,
-  areaType,
-  randomInt,
-  gridWidth,
-  gridHeight,
-}) {
+export function applyGenericOrganicGrowth(
+  grid,
+  areas,
+  { shrubType, areaType, randomInt, gridWidth, gridHeight },
+) {
   areas.forEach((area) => {
     const seedCount = Math.min(3, Math.floor(area.cells.length / 8));
     const seeds = area.cells
@@ -173,9 +195,14 @@ export function applyGenericOrganicGrowth(grid, areas, {
     for (let iteration = 0; iteration < 2; iteration++) {
       seeds.forEach(({ x, y }) => {
         const directions = [
-          [-1, -1], [-1, 0], [-1, 1],
-          [0, -1],          [0, 1],
-          [1, -1],  [1, 0], [1, 1],
+          [-1, -1],
+          [-1, 0],
+          [-1, 1],
+          [0, -1],
+          [0, 1],
+          [1, -1],
+          [1, 0],
+          [1, 1],
         ];
         const randomDirections = directions
           .sort(() => Math.random() - 0.5)
@@ -184,8 +211,10 @@ export function applyGenericOrganicGrowth(grid, areas, {
           const newX = x + dx;
           const newY = y + dy;
           if (
-            newX > 0 && newX < gridWidth - 1 &&
-            newY > 0 && newY < gridHeight - 1 &&
+            newX > 0 &&
+            newX < gridWidth - 1 &&
+            newY > 0 &&
+            newY < gridHeight - 1 &&
             Math.random() < 0.6
           ) {
             if (
@@ -205,16 +234,20 @@ export function applyGenericOrganicGrowth(grid, areas, {
 }
 
 // Generic organic blob growth for hex grids
-export function applyGenericHexOrganicGrowth(grid, areas, {
-  shrubType,
-  areaType,
-  randomInt,
-  gridWidth,
-  gridHeight,
-  gridToHexCoords,
-  hexNeighbors,
-  hexToGridCoords,
-}) {
+export function applyGenericHexOrganicGrowth(
+  grid,
+  areas,
+  {
+    shrubType,
+    areaType,
+    randomInt,
+    gridWidth,
+    gridHeight,
+    gridToHexCoords,
+    hexNeighbors,
+    hexToGridCoords,
+  },
+) {
   areas.forEach((area) => {
     const seedCount = Math.min(3, Math.floor(area.cells.length / 8));
     const seeds = area.cells
@@ -230,8 +263,10 @@ export function applyGenericHexOrganicGrowth(grid, areas, {
         randomNeighbors.forEach((neighbor) => {
           const gridPos = hexToGridCoords(neighbor.q, neighbor.r);
           if (
-            gridPos.x > 0 && gridPos.x < gridWidth - 1 &&
-            gridPos.y > 0 && gridPos.y < gridHeight - 1 &&
+            gridPos.x > 0 &&
+            gridPos.x < gridWidth - 1 &&
+            gridPos.y > 0 &&
+            gridPos.y < gridHeight - 1 &&
             Math.random() < 0.6
           ) {
             if (
@@ -251,13 +286,11 @@ export function applyGenericHexOrganicGrowth(grid, areas, {
 }
 
 // Shared utility: Widen/organically grow corridors/paths for square grids
-export function widenCorridorsOrPaths(grid, corridors, {
-  shrubType,
-  corridorType,
-  randomInt,
-  gridWidth,
-  gridHeight,
-}) {
+export function widenCorridorsOrPaths(
+  grid,
+  corridors,
+  { shrubType, corridorType, randomInt, gridWidth, gridHeight },
+) {
   corridors.forEach((corridor) => {
     corridor.path.forEach(({ x, y }) => {
       const adjacent = [
@@ -268,8 +301,10 @@ export function widenCorridorsOrPaths(grid, corridors, {
       ];
       adjacent.forEach((pos) => {
         if (
-          pos.x > 0 && pos.x < gridWidth - 1 &&
-          pos.y > 0 && pos.y < gridHeight - 1 &&
+          pos.x > 0 &&
+          pos.x < gridWidth - 1 &&
+          pos.y > 0 &&
+          pos.y < gridHeight - 1 &&
           Math.random() < 0.5
         ) {
           if (
@@ -288,16 +323,20 @@ export function widenCorridorsOrPaths(grid, corridors, {
 }
 
 // Shared utility: Widen/organically grow corridors/paths for hex grids
-export function widenHexCorridorsOrPaths(grid, corridors, {
-  shrubType,
-  corridorType,
-  randomInt,
-  gridWidth,
-  gridHeight,
-  gridToHexCoords,
-  hexNeighbors,
-  hexToGridCoords,
-}) {
+export function widenHexCorridorsOrPaths(
+  grid,
+  corridors,
+  {
+    shrubType,
+    corridorType,
+    randomInt,
+    gridWidth,
+    gridHeight,
+    gridToHexCoords,
+    hexNeighbors,
+    hexToGridCoords,
+  },
+) {
   corridors.forEach((corridor) => {
     corridor.path.forEach(({ x, y }) => {
       const hex = gridToHexCoords(x, y);
@@ -305,8 +344,10 @@ export function widenHexCorridorsOrPaths(grid, corridors, {
       neighbors.forEach((neighbor) => {
         const gridPos = hexToGridCoords(neighbor.q, neighbor.r);
         if (
-          gridPos.x > 0 && gridPos.x < gridWidth - 1 &&
-          gridPos.y > 0 && gridPos.y < gridHeight - 1 &&
+          gridPos.x > 0 &&
+          gridPos.x < gridWidth - 1 &&
+          gridPos.y > 0 &&
+          gridPos.y < gridHeight - 1 &&
           Math.random() < 0.5
         ) {
           if (
@@ -325,13 +366,10 @@ export function widenHexCorridorsOrPaths(grid, corridors, {
 }
 
 // Generic post-generation cleanup for square grids
-export function cleanupGenericMap(grid, {
-  walkableTypes,
-  shrubType,
-  roadType,
-  minRoadArea = 3,
-  randomInt,
-}) {
+export function cleanupGenericMap(
+  grid,
+  { walkableTypes, shrubType, roadType, minRoadArea = 3, randomInt },
+) {
   const height = grid.length;
   const width = grid[0].length;
 
@@ -340,14 +378,18 @@ export function cleanupGenericMap(grid, {
     if (x < 0 || x >= width || y < 0 || y >= height) return false;
     return (
       walkableTypes.includes(grid[y][x].type) ||
-      (grid[y][x].originalType && walkableTypes.includes(grid[y][x].originalType))
+      (grid[y][x].originalType &&
+        walkableTypes.includes(grid[y][x].originalType))
     );
   };
 
   // Helper: get adjacent walkable count (N/E/S/W)
   const getAdjacentWalkableCount = (x, y) => {
     const directions = [
-      [0, -1], [1, 0], [0, 1], [-1, 0],
+      [0, -1],
+      [1, 0],
+      [0, 1],
+      [-1, 0],
     ];
     return directions.filter(([dx, dy]) => isWalkable(x + dx, y + dy)).length;
   };
@@ -355,10 +397,14 @@ export function cleanupGenericMap(grid, {
   // Helper: get adjacent same type count
   const getAdjacentSameTypeCount = (x, y, tileType) => {
     const directions = [
-      [0, -1], [1, 0], [0, 1], [-1, 0],
+      [0, -1],
+      [1, 0],
+      [0, 1],
+      [-1, 0],
     ];
     return directions.filter(([dx, dy]) => {
-      const nx = x + dx, ny = y + dy;
+      const nx = x + dx,
+        ny = y + dy;
       if (nx < 0 || nx >= width || ny < 0 || ny >= height) return false;
       return (
         grid[ny][nx].type === tileType ||
@@ -387,7 +433,9 @@ export function cleanupGenericMap(grid, {
   });
 
   // 2. Remove single-tile areas
-  const visited = Array.from({ length: height }, () => Array(width).fill(false));
+  const visited = Array.from({ length: height }, () =>
+    Array(width).fill(false),
+  );
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       if (!visited[y][x] && isWalkable(x, y)) {
@@ -398,13 +446,21 @@ export function cleanupGenericMap(grid, {
           const current = stack.pop();
           area.push(current);
           const directions = [
-            [0, -1], [1, 0], [0, 1], [-1, 0],
+            [0, -1],
+            [1, 0],
+            [0, 1],
+            [-1, 0],
           ];
           directions.forEach(([dx, dy]) => {
-            const nx = current.x + dx, ny = current.y + dy;
+            const nx = current.x + dx,
+              ny = current.y + dy;
             if (
-              nx >= 0 && nx < width && ny >= 0 && ny < height &&
-              !visited[ny][nx] && isWalkable(nx, ny)
+              nx >= 0 &&
+              nx < width &&
+              ny >= 0 &&
+              ny < height &&
+              !visited[ny][nx] &&
+              isWalkable(nx, ny)
             ) {
               visited[ny][nx] = true;
               stack.push({ x: nx, y: ny });
@@ -445,7 +501,9 @@ export function cleanupGenericMap(grid, {
   });
 
   // 4. Remove small road/corridor areas
-  const roadVisited = Array.from({ length: height }, () => Array(width).fill(false));
+  const roadVisited = Array.from({ length: height }, () =>
+    Array(width).fill(false),
+  );
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       if (
@@ -460,15 +518,23 @@ export function cleanupGenericMap(grid, {
           const current = stack.pop();
           roadArea.push(current);
           const directions = [
-            [0, -1], [1, 0], [0, 1], [-1, 0],
+            [0, -1],
+            [1, 0],
+            [0, 1],
+            [-1, 0],
           ];
           directions.forEach(([dx, dy]) => {
-            const nx = current.x + dx, ny = current.y + dy;
+            const nx = current.x + dx,
+              ny = current.y + dy;
             if (
-              nx >= 0 && nx < width && ny >= 0 && ny < height &&
+              nx >= 0 &&
+              nx < width &&
+              ny >= 0 &&
+              ny < height &&
               !roadVisited[ny][nx] &&
               (grid[ny][nx].type === roadType ||
-                (grid[ny][nx].originalType && grid[ny][nx].originalType === roadType))
+                (grid[ny][nx].originalType &&
+                  grid[ny][nx].originalType === roadType))
             ) {
               roadVisited[ny][nx] = true;
               stack.push({ x: nx, y: ny });
@@ -489,16 +555,19 @@ export function cleanupGenericMap(grid, {
 }
 
 // Generic post-generation cleanup for hex grids
-export function cleanupGenericHexMap(grid, {
-  walkableTypes,
-  shrubType,
-  roadType,
-  minRoadArea = 3,
-  randomInt,
-  gridToHexCoords,
-  hexNeighbors,
-  hexToGridCoords,
-}) {
+export function cleanupGenericHexMap(
+  grid,
+  {
+    walkableTypes,
+    shrubType,
+    roadType,
+    minRoadArea = 3,
+    randomInt,
+    gridToHexCoords,
+    hexNeighbors,
+    hexToGridCoords,
+  },
+) {
   const height = grid.length;
   const width = grid[0].length;
 
@@ -507,7 +576,8 @@ export function cleanupGenericHexMap(grid, {
     if (x < 0 || x >= width || y < 0 || y >= height) return false;
     return (
       walkableTypes.includes(grid[y][x].type) ||
-      (grid[y][x].originalType && walkableTypes.includes(grid[y][x].originalType))
+      (grid[y][x].originalType &&
+        walkableTypes.includes(grid[y][x].originalType))
     );
   };
 
@@ -554,7 +624,9 @@ export function cleanupGenericHexMap(grid, {
   });
 
   // 2. Remove single-tile areas
-  const visited = Array.from({ length: height }, () => Array(width).fill(false));
+  const visited = Array.from({ length: height }, () =>
+    Array(width).fill(false),
+  );
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       if (!visited[y][x] && isWalkable(x, y)) {
@@ -609,7 +681,9 @@ export function cleanupGenericHexMap(grid, {
   });
 
   // 4. Remove small road/corridor areas
-  const roadVisited = Array.from({ length: height }, () => Array(width).fill(false));
+  const roadVisited = Array.from({ length: height }, () =>
+    Array(width).fill(false),
+  );
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       if (
@@ -631,7 +705,8 @@ export function cleanupGenericHexMap(grid, {
             if (
               !roadVisited[ny][nx] &&
               (grid[ny][nx].type === roadType ||
-                (grid[ny][nx].originalType && grid[ny][nx].originalType === roadType))
+                (grid[ny][nx].originalType &&
+                  grid[ny][nx].originalType === roadType))
             ) {
               roadVisited[ny][nx] = true;
               stack.push({ x: nx, y: ny });
@@ -649,4 +724,4 @@ export function cleanupGenericHexMap(grid, {
       }
     }
   }
-} 
+}
