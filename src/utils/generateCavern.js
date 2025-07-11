@@ -19,7 +19,7 @@ import {
 
 const MIN_ROOM_SIZE = 4;
 const MAX_ROOM_SIZE = 8;
-const MAX_ROOMS = 8;
+const MAX_ROOMS = 12;
 const MAX_ATTEMPTS = 50;
 const GRID_WIDTH = 60;
 const GRID_HEIGHT = 60;

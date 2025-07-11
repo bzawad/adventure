@@ -3,7 +3,7 @@ import { addDungeonLabels, assignAreaIds } from "./labelUtils";
 
 const MIN_ROOM_SIZE = 4;
 const MAX_ROOM_SIZE = 8;
-const MAX_ROOMS = 8;
+const MAX_ROOMS = 14;
 const MAX_ATTEMPTS = 50;
 const GRID_WIDTH = 60;
 const GRID_HEIGHT = 60;
@@ -25,12 +25,52 @@ function createEmptyGrid(width, height) {
 function roomOverlaps(newRoom, rooms) {
   return rooms.some((room) => {
     // Add 1 cell buffer between rooms
-    return !(
-      newRoom.x + newRoom.width + 1 < room.x ||
-      newRoom.x > room.x + room.width + 1 ||
-      newRoom.y + newRoom.height + 1 < room.y ||
-      newRoom.y > room.y + room.height + 1
-    );
+    if (newRoom.isRound && room.isRound) {
+      // Round room overlap check
+      const distance = Math.sqrt(
+        Math.pow(newRoom.centerX - room.centerX, 2) +
+        Math.pow(newRoom.centerY - room.centerY, 2),
+      );
+      return distance < newRoom.radius + room.radius + 1;
+    } else if (newRoom.isRound) {
+      // Round room vs rectangular room
+      const closestX = Math.max(
+        room.x,
+        Math.min(newRoom.centerX, room.x + room.width),
+      );
+      const closestY = Math.max(
+        room.y,
+        Math.min(newRoom.centerY, room.y + room.height),
+      );
+      const distance = Math.sqrt(
+        Math.pow(newRoom.centerX - closestX, 2) +
+        Math.pow(newRoom.centerY - closestY, 2),
+      );
+      return distance < newRoom.radius + 1;
+    } else if (room.isRound) {
+      // Rectangular room vs round room
+      const closestX = Math.max(
+        newRoom.x,
+        Math.min(room.centerX, newRoom.x + newRoom.width),
+      );
+      const closestY = Math.max(
+        newRoom.y,
+        Math.min(room.centerY, newRoom.y + newRoom.height),
+      );
+      const distance = Math.sqrt(
+        Math.pow(room.centerX - closestX, 2) +
+        Math.pow(room.centerY - closestY, 2),
+      );
+      return distance < room.radius + 1;
+    } else {
+      // Rectangular room overlap check (original logic)
+      return !(
+        newRoom.x + newRoom.width + 1 < room.x ||
+        newRoom.x > room.x + room.width + 1 ||
+        newRoom.y + newRoom.height + 1 < room.y ||
+        newRoom.y > room.y + room.height + 1
+      );
+    }
   });
 }
 
@@ -38,11 +78,38 @@ function generateRooms() {
   const rooms = [];
   let attempts = 0;
   while (rooms.length < MAX_ROOMS && attempts < MAX_ATTEMPTS) {
-    const width = randomInt(MIN_ROOM_SIZE, MAX_ROOM_SIZE);
-    const height = randomInt(MIN_ROOM_SIZE, MAX_ROOM_SIZE);
-    const x = randomInt(1, GRID_WIDTH - width - 2);
-    const y = randomInt(1, GRID_HEIGHT - height - 2);
-    const newRoom = { x, y, width, height };
+    let newRoom;
+
+    // 1 in 5 rooms will be round
+    const isRound = Math.random() < 0.2;
+
+    if (isRound) {
+      // Generate round room
+      const minRadius = Math.ceil(MIN_ROOM_SIZE / 2);
+      const maxRadius = Math.ceil(MAX_ROOM_SIZE / 2);
+      const radius = randomInt(minRadius, maxRadius);
+
+      // Ensure odd diameter for true center
+      const diameter = radius * 2 + 1;
+      const centerX = randomInt(radius + 1, GRID_WIDTH - radius - 2);
+      const centerY = randomInt(radius + 1, GRID_HEIGHT - radius - 2);
+
+      newRoom = {
+        centerX,
+        centerY,
+        radius,
+        diameter,
+        isRound: true,
+      };
+    } else {
+      // Generate rectangular room (original logic)
+      const width = randomInt(MIN_ROOM_SIZE, MAX_ROOM_SIZE);
+      const height = randomInt(MIN_ROOM_SIZE, MAX_ROOM_SIZE);
+      const x = randomInt(1, GRID_WIDTH - width - 2);
+      const y = randomInt(1, GRID_HEIGHT - height - 2);
+      newRoom = { x, y, width, height, isRound: false };
+    }
+
     if (!roomOverlaps(newRoom, rooms)) {
       rooms.push(newRoom);
     }
@@ -52,6 +119,14 @@ function generateRooms() {
 }
 
 function carveRoom(grid, room) {
+  if (room.isRound) {
+    carveRoundRoom(grid, room);
+  } else {
+    carveRectangularRoom(grid, room);
+  }
+}
+
+function carveRectangularRoom(grid, room) {
   for (let y = room.y; y < room.y + room.height; y++) {
     for (let x = room.x; x < room.x + room.width; x++) {
       if (
@@ -66,11 +141,42 @@ function carveRoom(grid, room) {
   }
 }
 
+function carveRoundRoom(grid, room) {
+  const { centerX, centerY, radius } = room;
+
+  for (let y = centerY - radius; y <= centerY + radius; y++) {
+    for (let x = centerX - radius; x <= centerX + radius; x++) {
+      // Check if point is within circle using distance formula
+      const distance = Math.sqrt(
+        Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2),
+      );
+
+      if (distance <= radius) {
+        if (
+          grid[y][x].type === "dungeon_wall" ||
+          grid[y][x].type === "dungeon_corridor"
+        ) {
+          grid[y][x].type = "dungeon_floor";
+          grid[y][x].tileX = randomInt(0, 3);
+          grid[y][x].tileY = randomInt(0, 3);
+        }
+      }
+    }
+  }
+}
+
 function roomCenter(room) {
-  return {
-    x: room.x + Math.floor(room.width / 2),
-    y: room.y + Math.floor(room.height / 2),
-  };
+  if (room.isRound) {
+    return {
+      x: room.centerX,
+      y: room.centerY,
+    };
+  } else {
+    return {
+      x: room.x + Math.floor(room.width / 2),
+      y: room.y + Math.floor(room.height / 2),
+    };
+  }
 }
 
 function carveCorridor(grid, from, to) {
